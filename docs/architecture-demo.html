@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Architecture — camera walkthrough (demo)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="architecture-shared/shared.css" />
+<style>
+  /* full-bleed stage: the diagram owns the whole viewport, cards float over the left */
+  .walk { position: relative; }
+  .panel { position: sticky; top: 0; height: 100vh; width: 100%; overflow: hidden; }
+  .panel svg { width: 100%; height: 100%; display: block; }
+  .panel::before { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1;
+    background: linear-gradient(90deg, rgba(8, 8, 11, .9) 0, rgba(8, 8, 11, .55) 30%, transparent 44%); }
+  #cam { transform-origin: 0 0; transition: transform 1.25s var(--ease); }
+  .hud { position: absolute; top: 18px; right: 3vw; width: min(460px, 40vw); z-index: 2; padding: 12px 16px; border-radius: 12px; background: rgba(8, 8, 11, .82); backdrop-filter: blur(8px); border: 1px solid var(--border); font: 500 12px "JetBrains Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted-2); }
+  .hud .row { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
+  .hud b { color: var(--fg); font-weight: 500; text-align: right; }
+  .progress { height: 2px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .progress > div { height: 100%; width: 0; background: linear-gradient(90deg, var(--from), var(--to)); transition: width .8s var(--ease); }
+
+  .cards { position: relative; z-index: 3; margin-top: -100vh; width: min(34vw, 520px); padding-left: 3vw; pointer-events: none; }
+  .step { min-height: 100vh; display: flex; align-items: center; }
+  .card { pointer-events: auto; border: 1px solid var(--border); background: rgba(12, 12, 17, .86); backdrop-filter: blur(10px); border-radius: 16px; padding: 26px 26px 22px; opacity: .25; transform: translateY(18px); transition: opacity .6s var(--ease), transform .6s var(--ease), border-color .6s; }
+  .step.active .card { opacity: 1; transform: none; border-color: var(--border-hover); box-shadow: 0 0 0 1px rgba(247, 34, 166, .08), 0 20px 60px -30px rgba(247, 34, 166, .35); }
+  .card .n { font: 500 11px "JetBrains Mono", monospace; letter-spacing: .16em; color: var(--accent); text-transform: uppercase; }
+  .card h2 { font: 600 26px/1.15 "Space Grotesk", sans-serif; margin: 8px 0 10px; letter-spacing: -.01em; }
+  .card p { color: var(--muted); margin: 0 0 16px; }
+
+  @media (max-width: 900px) {
+    .cards { width: 100%; padding: 0 16px; }
+    .step { align-items: flex-end; padding-bottom: 6vh; }
+    .panel::before { background: linear-gradient(0deg, rgba(8, 8, 11, .9) 0, transparent 50%); }
+    .hud { left: 16px; right: 16px; width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #cam, .card { transition: opacity .3s; }
+  }
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-head">
+    <div class="eyebrow">architecture</div>
+    <h1>How a prompt becomes a <span>running app</span></h1>
+    <p class="dek">Three processes, a durable job engine and a DAG of agents working in isolated sandboxes. Every box below is a real service in this repo.</p>
+  </div>
+  <div class="hero-scroll" id="hero"></div>
+  <a class="scroll-hint" href="#walk"><i></i> scroll down to walk through it</a>
+</section>
+
+<section class="walk" id="walk">
+  <div class="panel" id="stage">
+    <div class="hud">
+      <div class="row"><span id="stepNo">00 / 00</span><b id="stepName">overview</b></div>
+      <div class="progress"><div id="bar"></div></div>
+    </div>
+  </div>
+  <div class="cards" id="cards"></div>
+</section>
+
+<section class="outro">
+  <div>
+    <div class="eyebrow">end of walkthrough</div>
+    <p style="max-width:560px;margin:14px auto 0">That's one prompt end to end: queued, questioned, handed to a durable engine, planned into a DAG, built by agents in parallel worktrees, verified by the merge gate, and streamed back live.</p>
+  </div>
+</section>
+
+<script src="architecture-shared/diagram.js"></script>
+<script>
+const heroSvg = buildSVG("18 16 1564 962");
+heroSvg.querySelector("#cam").removeAttribute("id");
+paint(heroSvg, { all: true });
+document.getElementById("hero").appendChild(heroSvg);
+
+const stage = document.getElementById("stage");
+const svg = buildSVG();
+stage.appendChild(svg);
+const cam = svg.querySelector("#cam");
+const cardsEl = document.getElementById("cards");
+
+STEPS.forEach((s, i) => {
+  const sec = document.createElement("section");
+  sec.className = "step";
+  sec.dataset.i = i;
+  sec.innerHTML = `<div class="card">
+      <div class="n">${String(i).padStart(2, "0")} / ${String(STEPS.length - 1).padStart(2, "0")}</div>
+      <h2>${s.t}</h2><p>${s.p}</p>
+      <div class="links">${(s.links || []).map(([t, h]) => `<a href="${h}" target="_blank" rel="noopener">${t}</a>`).join("")}</div>
+    </div>`;
+  cardsEl.appendChild(sec);
+});
+
+// Fit the target into the part of the stage the cards don't cover, but never
+// below 0.85 px per unit — that floor is what makes Ctrl+ enlarge the diagram.
+const MIN_SCALE = 0.85;
+function setCam([x, y, w, h]) {
+  const sw = stage.clientWidth, sh = stage.clientHeight;
+  const narrow = sw < 900;
+  const left = narrow ? 0 : cardsEl.getBoundingClientRect().right + 16;
+  const top = narrow ? 70 : 80;
+  const rw = sw - left - 24, rh = (narrow ? sh * 0.5 : sh - top - 24);
+  const s = Math.max(Math.min(rw / w, rh / h) * 0.9, MIN_SCALE);
+  cam.style.transform = `translate(${left + rw / 2}px, ${top + rh / 2}px) scale(${s}) translate(${-(x + w / 2)}px, ${-(y + h / 2)}px)`;
+}
+
+let current = 0;
+function apply(i) {
+  current = i;
+  const s = STEPS[i];
+  paint(svg, s);
+  setCam(s.cam);
+  document.querySelectorAll(".step").forEach((el) => el.classList.toggle("active", +el.dataset.i === i));
+  document.getElementById("stepNo").textContent = `${String(i).padStart(2, "0")} / ${String(STEPS.length - 1).padStart(2, "0")}`;
+  document.getElementById("stepName").textContent = s.t;
+  document.getElementById("bar").style.width = `${(i / (STEPS.length - 1)) * 100}%`;
+}
+
+const io = new IntersectionObserver((entries) => {
+  entries.forEach((en) => { if (en.isIntersecting) apply(+en.target.dataset.i); });
+}, { rootMargin: "-45% 0px -45% 0px" });
+document.querySelectorAll(".step").forEach((s) => io.observe(s));
+// browser zoom resizes the stage in CSS px, so the camera has to be recomputed
+new ResizeObserver(() => setCam(STEPS[current].cam)).observe(stage);
+apply(0);
+</script>
+</body>
+</html>
