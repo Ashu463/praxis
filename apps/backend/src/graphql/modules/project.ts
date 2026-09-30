@@ -168,6 +168,12 @@ export const projectResolvers = {
       },
       ctx: GraphQLContext,
     ) => {
+      // Stars decide what's shown as "live projects" on the landing page, so only the admin curates them.
+      if (args.starred != null && !ctx.isInternal && requireUser(ctx).email !== ADMIN_EMAIL) {
+        throw new GraphQLError("Only the admin can star or unstar projects", {
+          extensions: { code: "FORBIDDEN", http: { status: 403 } },
+        });
+      }
       const project = await loadOwnedProject(ctx, args.id);
 
       // Only fields actually supplied are written, so omitting one leaves it

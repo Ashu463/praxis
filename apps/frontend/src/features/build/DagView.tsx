@@ -5,7 +5,7 @@ import { agentLabel } from "@/features/build/agentLabels";
 import TODOS from "@/graphql/todos.graphql?raw";
 import type { CallAgentEvent } from "../../../../../packages/agents/agent/events";
 
-interface Todo {
+export interface Todo {
   taskId: number;
   task: string;
   agent: string;
@@ -13,7 +13,7 @@ interface Todo {
   status: "PENDING" | "COMPLETED";
 }
 
-type TaskStatus = "pending" | "running" | "done" | "failed";
+export type TaskStatus = "pending" | "running" | "done" | "failed";
 
 // One drawn dependency edge, in content-space pixel coordinates. `to` is the
 // dependent task, so the edge can light up when that task is the active one.
@@ -35,7 +35,10 @@ function computeLevels(todos: Todo[]): number[][] {
     if (seen.has(id)) return 0; // guards a cycle — shouldn't happen, never trust it blindly
     seen.add(id);
     const deps = byId.get(id)?.dependency ?? [];
-    const computed = deps.length === 0 ? 0 : 1 + Math.max(...deps.map((d) => levelOf(d, seen)));
+    const computed =
+      deps.length === 0
+        ? 0
+        : 1 + Math.max(...deps.map((d) => levelOf(d, seen)));
     level.set(id, computed);
     return computed;
   }
@@ -54,8 +57,13 @@ function computeLevels(todos: Todo[]): number[][] {
 function taskStatus(todo: Todo, feed: CallAgentEvent[]): TaskStatus {
   let status: TaskStatus | null = null;
   for (const event of feed) {
-    if (event.type === "subagent_started" && event.taskId === todo.taskId) status = "running";
-    else if (event.type === "subagent_completed" && event.taskId === todo.taskId) status = event.success ? "done" : "failed";
+    if (event.type === "subagent_started" && event.taskId === todo.taskId)
+      status = "running";
+    else if (
+      event.type === "subagent_completed" &&
+      event.taskId === todo.taskId
+    )
+      status = event.success ? "done" : "failed";
   }
   return status ?? (todo.status === "COMPLETED" ? "done" : "pending");
 }
@@ -75,9 +83,6 @@ export function DagView({
   feed?: CallAgentEvent[];
 }) {
   const [todos, setTodos] = useState<Todo[] | null>(null);
-  const [edges, setEdges] = useState<Edge[]>([]);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const nodeRefs = useRef<Map<number, HTMLElement>>(new Map());
   const lastProjectId = useRef<string | null>(null);
 
   // The plan is saved ~2min into the run (after PlanTasks), but this view
@@ -92,7 +97,6 @@ export function DagView({
     // instantly blanking for the ~2min PlanTasks takes on the new run.
     if (lastProjectId.current !== projectId) {
       setTodos(null);
-      setEdges([]);
     }
     lastProjectId.current = projectId;
 
@@ -124,6 +128,29 @@ export function DagView({
     };
   }, [projectId, runId]);
 
+  if (!todos || todos.length === 0) return null;
+  return (
+    <div className="max-h-[280px] overflow-x-auto overflow-y-auto rounded-xl border border-border bg-surface/40 px-4 py-4">
+      <DagGraph todos={todos} statusOf={(t) => taskStatus(t, feed)} />
+    </div>
+  );
+}
+
+// The drawing itself, with no data fetching — DagView feeds it live SSE status,
+// the landing page feeds it a scripted replay, and both render identically.
+export function DagGraph({
+  todos,
+  statusOf,
+  compact = false,
+}: {
+  todos: Todo[];
+  statusOf: (todo: Todo) => TaskStatus;
+  compact?: boolean;
+}) {
+  const [edges, setEdges] = useState<Edge[]>([]);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const nodeRefs = useRef<Map<number, HTMLElement>>(new Map());
+
   // Measure node centres and build the connector paths in content-space (the
   // inner wrapper's coordinate system, so horizontal scroll doesn't shift them).
   // Re-measured on resize; status changes never move a node, so `todos` is the
@@ -135,21 +162,27 @@ export function DagView({
       const content = contentRef.current;
       if (!content) return;
       const origin = content.getBoundingClientRect();
+      // a transform: scale() on an ancestor shrinks rects but not the svg's own units
+      const k = origin.width / (content.offsetWidth || origin.width) || 1;
       const next: Edge[] = [];
       for (const t of todos) {
         const childEl = nodeRefs.current.get(t.taskId);
         if (!childEl) continue;
         const child = childEl.getBoundingClientRect();
-        const x2 = child.left - origin.left;
-        const y2 = child.top - origin.top + child.height / 2;
+        const x2 = (child.left - origin.left) / k;
+        const y2 = (child.top - origin.top + child.height / 2) / k;
         for (const dep of t.dependency) {
           const parentEl = nodeRefs.current.get(dep);
           if (!parentEl) continue;
           const parent = parentEl.getBoundingClientRect();
-          const x1 = parent.right - origin.left;
-          const y1 = parent.top - origin.top + parent.height / 2;
+          const x1 = (parent.right - origin.left) / k;
+          const y1 = (parent.top - origin.top + parent.height / 2) / k;
           const mx = (x1 + x2) / 2;
-          next.push({ from: dep, to: t.taskId, d: `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}` });
+          next.push({
+            from: dep,
+            to: t.taskId,
+            d: `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`,
+          });
         }
       }
       setEdges(next);
@@ -165,80 +198,104 @@ export function DagView({
     };
   }, [todos]);
 
-  if (!todos || todos.length === 0) return null;
-
   const levels = computeLevels(todos);
   const byId = new Map(todos.map((t) => [t.taskId, t]));
 
   return (
-    <div className="max-h-[280px] overflow-x-auto overflow-y-auto rounded-xl border border-border bg-surface/40 px-4 py-4">
-      <div ref={contentRef} className="relative flex w-max items-stretch gap-12">
-        {/* Edges live behind the nodes; the node backgrounds paint over them. */}
-        <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
-          {edges.map((edge, i) => {
-            const active = taskStatus(byId.get(edge.to)!, feed) === "running";
-            return (
-              <path
-                key={i}
-                d={edge.d}
-                fill="none"
-                stroke={active ? "var(--color-accent)" : "var(--color-border-hover)"}
-                strokeWidth={active ? 2 : 1.5}
-              />
-            );
-          })}
-        </svg>
+    <div
+      ref={contentRef}
+      className={cn(
+        "relative flex w-max items-stretch",
+        compact ? "gap-8" : "gap-12",
+      )}
+    >
+      {/* Edges live behind the nodes; the node backgrounds paint over them. */}
+      <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
+        {edges.map((edge, i) => {
+          const active = statusOf(byId.get(edge.to)!) === "running";
+          return (
+            <path
+              key={i}
+              d={edge.d}
+              fill="none"
+              stroke={
+                active ? "var(--color-accent)" : "var(--color-border-hover)"
+              }
+              strokeWidth={active ? 2 : 1.5}
+              style={{ transition: "stroke .6s ease, stroke-width .6s ease" }}
+            />
+          );
+        })}
+      </svg>
 
-        {levels.map((taskIds, i) => (
-          <div key={i} className="relative z-10 flex shrink-0 flex-col justify-center gap-3">
-            {taskIds.map((taskId) => {
-              const todo = byId.get(taskId)!;
-              const status = taskStatus(todo, feed);
-              return (
-                <div
-                  key={taskId}
-                  ref={(el) => {
-                    const m = nodeRefs.current;
-                    if (el) m.set(taskId, el);
-                    else m.delete(taskId);
-                  }}
-                  title={todo.task}
-                  className={cn(
-                    "flex w-44 flex-col gap-0.5 rounded-lg border bg-surface px-3 py-2",
-                    status === "done" && "border-ok/40",
-                    status === "running" && "animate-pulse border-accent shadow-[0_0_14px_-2px_var(--color-accent)]",
-                    status === "failed" && "border-danger/60",
-                    status === "pending" && "border-border",
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        "h-2 w-2 shrink-0 rotate-45 border",
-                        status === "done" && "border-ok bg-ok",
-                        status === "running" && "border-accent bg-accent",
-                        status === "failed" && "border-danger bg-danger",
-                        status === "pending" && "border-muted-foreground bg-transparent",
-                      )}
-                    />
-                    <span
-                      className={cn(
-                        "text-xs font-semibold",
-                        status === "failed" ? "text-danger" : status === "pending" ? "text-muted-foreground" : "text-foreground",
-                      )}
-                    >
-                      {agentLabel(todo.agent)}
-                    </span>
-                  </div>
-                  <span className="truncate text-[11px] text-muted" title={todo.task}>
-                    {todo.task}
+      {levels.map((taskIds, i) => (
+        <div
+          key={i}
+          className={cn(
+            "relative z-10 flex shrink-0 flex-col justify-center",
+            compact ? "gap-5" : "gap-3",
+          )}
+        >
+          {taskIds.map((taskId) => {
+            const todo = byId.get(taskId)!;
+            const status = statusOf(todo);
+            return (
+              <div
+                key={taskId}
+                ref={(el) => {
+                  const m = nodeRefs.current;
+                  if (el) m.set(taskId, el);
+                  else m.delete(taskId);
+                }}
+                title={todo.task}
+                className={cn(
+                  // fade between states rather than snapping, so level hand-offs read as one motion
+                  cn(
+                    "flex flex-col gap-0.5 rounded-lg border bg-surface px-3 py-2 transition-[border-color,box-shadow] duration-700",
+                    compact ? "w-36" : "w-44",
+                  ),
+                  status === "done" && "border-ok/40",
+                  status === "running" &&
+                    "animate-pulse border-accent shadow-[0_0_14px_-2px_var(--color-accent)]",
+                  status === "failed" && "border-danger/60",
+                  status === "pending" && "border-border",
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "h-2 w-2 shrink-0 rotate-45 border transition-colors duration-700",
+                      status === "done" && "border-ok bg-ok",
+                      status === "running" && "border-accent bg-accent",
+                      status === "failed" && "border-danger bg-danger",
+                      status === "pending" &&
+                        "border-muted-foreground bg-transparent",
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "text-xs font-semibold",
+                      status === "failed"
+                        ? "text-danger"
+                        : status === "pending"
+                          ? "text-muted-foreground"
+                          : "text-foreground",
+                    )}
+                  >
+                    {agentLabel(todo.agent)}
                   </span>
                 </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
+                <span
+                  className="truncate text-[11px] text-muted"
+                  title={todo.task}
+                >
+                  {todo.task}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }

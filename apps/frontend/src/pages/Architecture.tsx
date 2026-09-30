@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import { FieldNotesPage } from "@/features/shell/FieldNotesPage";
 import { FieldNoteEntry } from "@/features/shell/FieldNoteEntry";
 import { BlueprintSchematic } from "@/features/shell/BlueprintSchematic";
-import { StatusItem } from "@/features/shell/StatusLine";
 
 const TOC = [
   ["system overview", "system-overview"],
@@ -18,7 +17,6 @@ export function Architecture() {
       eyebrow="architecture"
       title="How the build pipeline actually works"
       dek="Not a wrapper around a single LLM call. Every node below is a real service in a Bun/Turborepo monorepo — follow the highlighted critical path a prompt takes through it."
-      statusRight={<StatusItem label="DWG" value="LVBL-001 · rev C" />}
       hero={<BlueprintSchematic />}
       toc={TOC.map(([label, id]) => (
         <a key={id} href={`#${id}`} className="transition-colors hover:text-foreground">

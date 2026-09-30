@@ -94,16 +94,17 @@ STEPS.forEach((s, i) => {
   cardsEl.appendChild(sec);
 });
 
-// Fit the target into the part of the stage the cards don't cover, but never
-// below 0.85 px per unit — that floor is what makes Ctrl+ enlarge the diagram.
-const MIN_SCALE = 0.85;
+// Fit the target into the part of the stage the cards don't cover, clamped so
+// 1 diagram unit stays between 0.85 and 1.6 CSS px. Units are CSS px, so text
+// size tracks browser zoom instead of blowing up on deep zooms.
+const MIN_SCALE = 0.85, MAX_SCALE = 1.6;
 function setCam([x, y, w, h]) {
   const sw = stage.clientWidth, sh = stage.clientHeight;
   const narrow = sw < 900;
   const left = narrow ? 0 : cardsEl.getBoundingClientRect().right + 16;
   const top = narrow ? 70 : 80;
   const rw = sw - left - 24, rh = (narrow ? sh * 0.5 : sh - top - 24);
-  const s = Math.max(Math.min(rw / w, rh / h) * 0.9, MIN_SCALE);
+  const s = Math.min(Math.max(Math.min(rw / w, rh / h) * 0.9, MIN_SCALE), MAX_SCALE);
   cam.style.transform = `translate(${left + rw / 2}px, ${top + rh / 2}px) scale(${s}) translate(${-(x + w / 2)}px, ${-(y + h / 2)}px)`;
 }
 

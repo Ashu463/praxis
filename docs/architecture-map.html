@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Architecture — system map (demo)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="architecture-shared/shared.css" />
+<style>
+  header { padding: 36px 4vw 8px; }
+  header h1 { font-size: clamp(28px, 3vw, 40px); margin: 10px 0 6px; }
+  header .dek { margin: 0; font-size: 15px; }
+  /* fixed px canvas: text size follows browser zoom instead of refitting */
+  .map { overflow: auto; padding: 8px 2vw 24px; }
+  .map svg { display: block; margin: 0 auto; overflow: visible; }
+  .legend { display: flex; gap: 28px; justify-content: center; font: 12px "JetBrains Mono", monospace; color: var(--muted-2); padding-bottom: 40px; }
+  .legend i { display: inline-block; width: 34px; height: 0; border-top: 2px dashed var(--accent); vertical-align: middle; margin-right: 8px; }
+  .legend i.sse { border-color: #8b7ff0; }
+
+  .frame { fill: rgba(147, 39, 219, .035); stroke: url(#grad); stroke-width: 1.2; stroke-dasharray: none; opacity: .55; }
+  .frame-label { font: 600 12px "JetBrains Mono", monospace; letter-spacing: .2em; fill: var(--accent); }
+  .lane-label { font: 500 10px "JetBrains Mono", monospace; letter-spacing: .16em; fill: var(--muted-2); }
+  .lane-div { stroke: var(--border-hover); stroke-dasharray: 4 6; }
+  .group-box { fill: none; stroke: var(--border-hover); stroke-dasharray: 3 5; }
+
+  .node { cursor: pointer; outline: none; }
+  .node .box { fill: var(--surface); stroke: var(--border-hover); stroke-width: 1.2; transition: stroke .25s, filter .25s; }
+  .node.core .box { fill: #111119; stroke: #34344a; }
+  .node .ttl { font: 600 15px "Space Grotesk", sans-serif; fill: var(--fg); pointer-events: none; }
+  .node .sub { font: 11px Inter, sans-serif; fill: var(--muted); pointer-events: none; }
+  /* glow only on hover/focus/selected — the arrows are the only things always lit */
+  .node:hover .box, .node:focus-visible .box, .node.selected .box { stroke: var(--accent); filter: drop-shadow(0 0 12px rgba(247, 34, 166, .55)); }
+
+  .edge path { fill: none; stroke: url(#grad); stroke-width: 1.8; stroke-dasharray: 7 7; animation: flow 1.1s linear infinite; filter: drop-shadow(0 0 4px rgba(247, 34, 166, .55)); }
+  .edge.sse path { stroke: #8b7ff0; filter: drop-shadow(0 0 4px rgba(139, 127, 240, .6)); animation-duration: 1.6s; }
+  .edge.soft path { opacity: .6; }
+  .edge text { font: 500 11px "JetBrains Mono", monospace; fill: var(--accent); }
+  .edge.sse text { fill: #9b8cff; }
+  @keyframes flow { to { stroke-dashoffset: -28; } }
+
+  /* click → card, not a new page */
+  .scrim { position: fixed; inset: 0; background: rgba(4, 4, 6, .45); opacity: 0; pointer-events: none; transition: opacity .3s; }
+  .scrim.open { opacity: 1; pointer-events: auto; }
+  .card { position: fixed; top: 16px; right: 16px; bottom: 16px; width: min(440px, calc(100vw - 32px)); overflow-y: auto;
+    background: rgba(12, 12, 17, .94); backdrop-filter: blur(12px); border: 1px solid var(--border-hover); border-radius: 18px;
+    padding: 28px; transform: translateX(calc(100% + 24px)); transition: transform .45s var(--ease);
+    box-shadow: 0 0 0 1px rgba(247, 34, 166, .08), 0 30px 80px -30px rgba(247, 34, 166, .4); }
+  .card.open { transform: none; }
+  .card .tag { font: 500 11px "JetBrains Mono", monospace; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); }
+  .card h2 { font: 600 28px/1.15 "Space Grotesk", sans-serif; margin: 8px 0 12px; }
+  .card p { color: var(--muted); margin: 0 0 16px; }
+  .card ul { margin: 0 0 20px; padding-left: 18px; color: var(--muted); }
+  .card li { margin-bottom: 6px; }
+  .card .close { position: absolute; top: 18px; right: 18px; background: none; border: 1px solid var(--border-hover); color: var(--muted); border-radius: 8px; width: 32px; height: 32px; cursor: pointer; font-size: 16px; }
+  .card .close:hover { color: var(--fg); border-color: var(--accent); }
+  @media (prefers-reduced-motion: reduce) { .edge path { animation: none; } .card { transition: none; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">architecture</div>
+  <h1>How a prompt becomes a <span>running app</span></h1>
+  <p class="dek">Click any component to open its story.</p>
+</header>
+<div class="map" id="map"></div>
+<div class="legend"><span><i></i>request flow</span><span><i class="sse"></i>live events back to the browser</span></div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="card" id="card" aria-hidden="true">
+  <button class="close" id="close" aria-label="Close">✕</button>
+  <div class="tag" id="cTag"></div>
+  <h2 id="cTitle"></h2>
+  <p id="cBody"></p>
+  <ul id="cList"></ul>
+  <div class="links" id="cLinks"></div>
+</aside>
+
+<script>
+const GH = "https://github.com/Ashu463/lovable/blob/master/";
+const L = (path, line) => [path.split("/").pop() + ":" + line, GH + path + "#L" + line];
+
+// Placeholder copy — swap in the real story per component.
+const INFO = {
+  browser:  { tag: "client", t: "Browser", b: "React app that starts a run and renders every event live.", li: ["RunProvider state machine mirrors RunStatus", "Resumes on refresh via runState"], links: [] },
+  backend:  { tag: "backend · :3000", t: "Backend + job queue", b: "GraphQL API writes the Run, enqueues a BullMQ job, and a worker picks it up.", li: ["API never loads agent code", "Worker concurrency 5"], links: [L("apps/backend/src/graphql/modules/chat.ts", 96), L("apps/backend/src/lib/worker.ts", 29)] },
+  stores:   { tag: "state", t: "Postgres + Redis", b: "Postgres holds runs, questions, answers and events. Redis carries the queue and pub/sub.", li: ["Prisma models", "Redis :6380"], links: [] },
+  prep:     { tag: "preparatory stage", t: "Bootstrap gates", b: "Every question is asked before any code: dev gate, clarification, complexity, UI preferences or design pick.", li: ["Any gate needing input pauses the run", "continueRun resumes the same runId"], links: [L("packages/agents/agent/callAgent.ts", 56)] },
+  inngest:  { tag: "durable engine · :8288", t: "Inngest trigger", b: "Sends run.simple or run.complex and runs the build as checkpointed steps.", li: ["Crash resumes at the failed step", "Default 4 retries per step"], links: [L("packages/agents/agent/callAgent.ts", 441)] },
+  design:   { tag: "simple path", t: "Design pick · Stitch", b: "Three Stitch variants; the user picks one as the starting point.", li: ["Placeholder"], links: [L("packages/agents/agent/subagents/uiExpert.ts", 55)] },
+  agent:    { tag: "simple path", t: "Single agent", b: "One generalist loop builds on top of the picked design.", li: ["Placeholder"], links: [L("packages/agents/agent/agent.ts", 81)] },
+  orch:     { tag: "complex path", t: "Orchestrator", b: "Plans the work, walks the DAG level by level, gates every level on a passing build.", li: ["Each level is an Inngest step", "decide: continue / replan / abort"], links: [L("packages/agents/agent/orchestrator.ts", 340)] },
+  dag:      { tag: "complex path", t: "Planner → DAG", b: "Prompt becomes todos with dependencies, sorted into levels.", li: ["Placeholder"], links: [] },
+  coder:    { tag: "subagent", t: "Coder", b: "Writes and edits project files through a tool-calling loop.", li: ["LLM → tool call → sandbox → context", "2 attempts with backoff"], links: [L("packages/agents/agent/subAgent.ts", 123)] },
+  uiexpert: { tag: "subagent", t: "UIExpert", b: "Builds each screen's base template from the stored UI preferences via Stitch.", li: ["Placeholder"], links: [L("packages/agents/agent/subagents/uiExpert.ts", 105)] },
+  tester:   { tag: "merge gate", t: "Tester", b: "Runs the build and pins the error to the task that owns the file.", li: ["Placeholder"], links: [L("packages/agents/agent/orchestrator.ts", 241)] },
+  debugger: { tag: "merge gate", t: "Debugger", b: "Fixes the attributed error, then the build re-runs — up to 3 rounds.", li: ["Placeholder"], links: [] },
+  llm:      { tag: "external", t: "LLMs via BAML", b: "Typed, schema-validated LLM functions used by every agent.", li: ["Placeholder"], links: [] },
+  sandbox:  { tag: "runtime", t: "E2B sandbox", b: "Where all generated code lives, builds and previews.", li: ["Placeholder"], links: [L("packages/agents/agent/utils/sandbox.ts", 57)] },
+  r2:       { tag: "storage", t: "Cloudflare R2", b: "Files are restored on sandbox start and synced back as they change.", li: ["Placeholder"], links: [L("packages/agents/agent/utils/sandbox.ts", 351)] },
+};
+
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs = {}, parent, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (text != null) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+
+const W = 1600, H = 870;
+const svg = el("svg", { width: W, height: H });
+document.getElementById("map").appendChild(svg);
+const defs = el("defs", {}, svg);
+// canvas-wide gradient: a bbox-relative one renders nothing on perfectly straight paths
+const g = el("linearGradient", { id: "grad", gradientUnits: "userSpaceOnUse", x1: 0, y1: 0, x2: W, y2: 0 }, defs);
+el("stop", { offset: 0, "stop-color": "#9327db" }, g);
+el("stop", { offset: 1, "stop-color": "#f722a6" }, g);
+for (const [id, c] of [["ah", "#f722a6"], ["ahS", "#8b7ff0"]]) {
+  const m = el("marker", { id, markerWidth: 8, markerHeight: 8, refX: 6, refY: 4, orient: "auto", markerUnits: "userSpaceOnUse" }, defs);
+  el("path", { d: "M0,0 L8,4 L0,8 Z", fill: c }, m);
+}
+const back = el("g", {}, svg), edges = el("g", {}, svg), nodes = el("g", {}, svg);
+
+// agentic core: the centre of the map, everything else feeds it or serves it
+el("rect", { x: 760, y: 96, width: 580, height: 690, rx: 22, class: "frame" }, back);
+el("text", { x: 784, y: 126, class: "frame-label" }, back, "AGENTIC CORE");
+el("text", { x: 784, y: 160, class: "lane-label" }, back, "SIMPLE PATH");
+el("line", { x1: 780, y1: 280, x2: 1320, y2: 280, class: "lane-div" }, back);
+el("text", { x: 784, y: 312, class: "lane-label" }, back, "COMPLEX PATH");
+el("rect", { x: 820, y: 494, width: 500, height: 102, rx: 14, class: "group-box" }, back);
+el("text", { x: 950, y: 514, class: "lane-label" }, back, "PARALLEL WORKTREES");
+el("rect", { x: 820, y: 630, width: 500, height: 128, rx: 14, class: "group-box" }, back);
+el("text", { x: 950, y: 650, class: "lane-label" }, back, "MERGE GATE · ≤ 3");
+
+const node = (id, x, y, w, h, title, sub, core) => {
+  const n = el("g", { class: "node" + (core ? " core" : ""), tabindex: 0, role: "button", "aria-label": title, "data-id": id }, nodes);
+  el("rect", { x, y, width: w, height: h, rx: 12, class: "box" }, n);
+  el("text", { x: x + 16, y: y + (sub ? 25 : h / 2 + 5), class: "ttl" }, n, title);
+  if (sub) el("text", { x: x + 16, y: y + 43, class: "sub" }, n, sub);
+  n.addEventListener("click", () => open(id, n));
+  n.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(id, n); } });
+};
+
+// feeders
+node("browser", 30, 412, 120, 56, "Browser", "React");
+node("backend", 200, 412, 160, 56, "Backend + queue", "GraphQL · BullMQ · worker");
+node("stores", 200, 560, 160, 56, "Postgres + Redis", "state · pub/sub");
+node("prep", 410, 412, 150, 56, "Preparatory stage", "bootstrap gates");
+node("inngest", 610, 412, 124, 56, "Inngest", "simple / complex");
+// agentic core
+node("design", 800, 180, 170, 60, "Design pick", "3 Stitch variants", 1);
+node("agent", 1060, 180, 170, 60, "Single agent", "one generalist loop", 1);
+node("orch", 800, 330, 170, 60, "Orchestrator", "durable steps", 1);
+node("dag", 1060, 330, 170, 60, "Planner → DAG", "todos into levels", 1);
+node("coder", 850, 528, 170, 56, "Coder", "LLM ⟳ tools", 1);
+node("uiexpert", 1120, 528, 170, 56, "UIExpert", "base templates", 1);
+node("tester", 850, 670, 170, 56, "Tester", "npm run build", 1);
+node("debugger", 1120, 670, 170, 56, "Debugger", "fix + retry", 1);
+// serving it
+node("llm", 1410, 110, 150, 56, "LLMs · BAML", "typed functions");
+node("sandbox", 1410, 412, 150, 56, "E2B sandbox", "build · preview");
+node("r2", 1410, 600, 150, 56, "Cloudflare R2", "file persistence");
+
+const edge = (d, label, lx, ly, cls = "") => {
+  const e = el("g", { class: "edge " + cls }, edges);
+  el("path", { d, "marker-end": `url(#${cls.includes("sse") ? "ahS" : "ah"})` }, e);
+  if (label) el("text", { x: lx, y: ly }, e, label);
+};
+edge("M150,440 H196", "", 0, 0);
+edge("M360,440 H406", "", 0, 0);
+edge("M280,468 V556", "persist", 288, 518, "soft");
+edge("M560,440 H606", "", 0, 0);
+edge("M485,412 V362 H90 V408", "pause → ask user", 210, 354, "soft");
+edge("M672,412 V210 H796", "run.simple", 680, 262);
+edge("M734,440 H760 V360 H796", "run.complex", 766, 414);
+edge("M970,210 H1056", "", 0, 0);
+edge("M970,360 H1056", "plan", 994, 352);
+edge("M1145,390 V440 H935 V524", "", 0, 0);
+edge("M1145,440 H1205 V524", "", 0, 0);
+edge("M935,596 V666", "", 0, 0);
+edge("M1205,596 V666", "", 0, 0);
+edge("M1020,690 H1116", "error", 1046, 682);
+edge("M1120,708 H1024", "fixed", 1050, 724);
+edge("M1320,690 H1334 V360 H1234", "next level", 1250, 352, "soft");
+edge("M1230,210 H1485 V408", "writes to", 1300, 202);
+edge("M1320,545 H1370 V440 H1406", "writes to", 1344, 432);
+edge("M1340,138 H1406", "", 0, 0, "soft");
+edge("M1470,468 V596", "sync", 1440, 536);
+edge("M1500,600 V472", "restore", 1508, 536, "soft");
+edge("M1040,786 V836 H90 V472", "SSE · Redis pub/sub → live events", 460, 828, "sse");
+
+// ---------- card ----------
+const card = document.getElementById("card"), scrim = document.getElementById("scrim");
+let selected = null;
+function open(id, n) {
+  const d = INFO[id];
+  document.getElementById("cTag").textContent = d.tag;
+  document.getElementById("cTitle").textContent = d.t;
+  document.getElementById("cBody").textContent = d.b;
+  document.getElementById("cList").innerHTML = d.li.map((x) => `<li>${x}</li>`).join("");
+  document.getElementById("cLinks").innerHTML = d.links.map(([t, h]) => `<a href="${h}" target="_blank" rel="noopener">${t}</a>`).join("");
+  selected?.classList.remove("selected");
+  selected = n; n.classList.add("selected");
+  card.classList.add("open"); scrim.classList.add("open"); card.setAttribute("aria-hidden", "false");
+}
+function close() {
+  card.classList.remove("open"); scrim.classList.remove("open"); card.setAttribute("aria-hidden", "true");
+  selected?.classList.remove("selected"); selected = null;
+}
+document.getElementById("close").addEventListener("click", close);
+scrim.addEventListener("click", close);
+addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+</script>
+</body>
+</html>

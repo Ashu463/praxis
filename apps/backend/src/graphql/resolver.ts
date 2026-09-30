@@ -6,6 +6,7 @@ import { chatResolvers } from "./modules/chat";
 import { designResolvers } from "./modules/design";
 import { questionResolvers } from "./modules/question";
 import { uiPreferenceResolvers } from "./modules/uiPreference";
+import { accessResolvers } from "./modules/access";
 import { streamResolvers } from "./modules/stream";
 import { internalResolvers } from "./modules/internal";
 
@@ -33,6 +34,7 @@ export const resolvers = {
     ...designResolvers.Mutation,
     ...questionResolvers.Mutation,
     ...uiPreferenceResolvers.Mutation,
+    ...accessResolvers.Mutation,
     ...internalResolvers.Mutation,
   },
 

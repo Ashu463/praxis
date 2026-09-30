@@ -12,6 +12,7 @@ import chat from "./schema/chat.graphql" with { type: "text" };
 import design from "./schema/design.graphql" with { type: "text" };
 import question from "./schema/question.graphql" with { type: "text" };
 import uiPreference from "./schema/uiPreference.graphql" with { type: "text" };
+import access from "./schema/access.graphql" with { type: "text" };
 import stream from "./schema/stream.graphql" with { type: "text" };
 import internal from "./schema/internal.graphql" with { type: "text" };
 
@@ -24,6 +25,7 @@ export const typeDefs = [
   design,
   question,
   uiPreference,
+  access,
   stream,
   internal,
 ];

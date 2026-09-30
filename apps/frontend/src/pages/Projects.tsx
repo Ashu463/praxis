@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import PROJECTS from "@/graphql/projects.graphql?raw";
 import SET_STARRED from "@/graphql/setStarred.graphql?raw";
 import { useOpenProject } from "@/lib/useOpenProject";
+import { useAuth } from "@/lib/auth";
+import { ADMIN_EMAIL } from "@/lib/admin";
 
 interface ProjectRow {
   id: string;
@@ -24,6 +26,9 @@ export function Projects() {
   const [projects, setProjects] = useState<ProjectRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { openProject, openingId, openError } = useOpenProject();
+  const { session } = useAuth();
+  // the backend rejects anyone else too; this just stops offering a button that can't work
+  const isAdmin = session?.user.email === ADMIN_EMAIL;
 
   useEffect(() => {
     gql<{ projects: ProjectRow[] }>(PROJECTS)
@@ -98,9 +103,10 @@ export function Projects() {
                 {new Date(project.createdAt).toLocaleDateString()}
               </span>
               <span
-                role="button"
-                title={project.isStarred ? "Unstar" : "Star"}
+                role={isAdmin ? "button" : undefined}
+                title={isAdmin ? (project.isStarred ? "Unstar" : "Star") : "Only the admin can star projects"}
                 onClick={(e) => {
+                  if (!isAdmin) return;
                   e.stopPropagation();
                   toggleStar(project);
                 }}
@@ -108,7 +114,8 @@ export function Projects() {
                 <Star
                   className={cn(
                     "h-4 w-4 transition-colors",
-                    project.isStarred ? "fill-accent text-accent" : "text-muted hover:text-foreground",
+                    project.isStarred ? "fill-accent text-accent" : "text-muted",
+                    isAdmin && !project.isStarred && "hover:text-foreground",
                   )}
                 />
               </span>

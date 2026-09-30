@@ -1,25 +1,15 @@
 import { useState, type KeyboardEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowUp, ChevronDown, Plus } from "lucide-react";
+import { ArrowUp } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth";
 import { useRun } from "@/lib/run";
 import { getStoredSession } from "@/lib/session";
 import { GoogleLoginButton } from "@/features/auth/GoogleLoginButton";
-import { cn } from "@/lib/utils";
+import { ADMIN_EMAIL } from "@/lib/admin";
 
-const MODES = ["Build", "Plan"];
-
-// Temporary demo gate: only the admin account can kick off new runs, so a
-// public link doesn't quietly burn through paid API tokens. Everyone else
-// still sees the normal bar, just disabled and dimmed — not swapped out.
-const ADMIN_EMAIL = "ashukasaudhan971@gmail.com";
+// Only the admin account can kick off new runs, so a public link doesn't quietly
+// burn through paid API tokens. Everyone else sees the bar, just disabled.
 
 export function HomeChatBox() {
   const { session, sessionExpired } = useAuth();
@@ -27,7 +17,6 @@ export function HomeChatBox() {
   const { submit } = useRun();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [mode, setMode] = useState(MODES[0]);
   const [prompt, setPrompt] = useState(() => searchParams.get("prompt") ?? "");
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -50,7 +39,7 @@ export function HomeChatBox() {
   };
 
   return (
-    <div className="w-full max-w-2xl">
+    <div className="w-full max-w-4xl">
       <div className="overflow-hidden rounded-2xl border border-border-hover bg-surface shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)]">
         <div className="flex items-center gap-1.5 border-b border-border px-3.5 py-2.5 font-mono text-[11px] text-muted-foreground">
           <span className="h-[9px] w-[9px] rounded-full bg-border-hover" />
@@ -66,34 +55,16 @@ export function HomeChatBox() {
             onKeyDown={handleKeyDown}
             placeholder={
               !!session && !isAdmin
-                ? `New builds are limited to admin ${ADMIN_EMAIL} right now. I highly urge you to visit the starred projects, those are worth looking`
+                ? `New builds are limited to admin ${ADMIN_EMAIL} right now. I highly urge you to look at the live projects below — those are worth a look`
                 : "Ask Praxis to build a landing page for…"
             }
-            rows={2}
-            className="text-base"
+            rows={3}
+            className="text-lg"
           />
         </div>
 
-        <div className="flex items-center justify-between border-t border-border px-3.5 py-2.5">
-          <button className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-hover hover:text-foreground">
-            <Plus className="h-4 w-4" />
-          </button>
-
+        <div className="flex items-center justify-end border-t border-border px-3.5 py-2.5">
           <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 font-mono text-xs text-muted transition-colors hover:text-foreground">
-                {mode}
-                <ChevronDown className="h-3.5 w-3.5" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {MODES.map((m) => (
-                  <DropdownMenuItem key={m} onSelect={() => setMode(m)}>
-                    {m}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
             {session ? (
               <button
                 onClick={handleSubmit}

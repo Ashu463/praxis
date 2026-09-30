@@ -41,7 +41,7 @@ export function AboutAuthor() {
             yourself.
           </p>
           <p>
-            The <Link to="/architecture" className="text-accent hover:underline">architecture and tradeoffs</Link> behind
+            The <Link to="/#architecture" className="text-accent hover:underline">architecture and tradeoffs</Link> behind
             this are written up in detail, including what I&rsquo;d change
             with more time — and the{" "}
             <Link to="/docs" className="text-accent hover:underline">full build journey</Link> goes

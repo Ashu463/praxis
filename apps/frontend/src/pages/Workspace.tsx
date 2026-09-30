@@ -12,7 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useRun, type ChatMessage } from "@/lib/run";
 import { Markdown } from "@/features/build/Markdown";
-import { StatusLine, StatusItem, StatusSep } from "@/features/shell/StatusLine";
+import { StatusLine } from "@/features/shell/StatusLine";
 import { BrandMark } from "@/features/shell/BrandMark";
 import { PipelineStrip } from "@/features/build/PipelineStrip";
 import { DagView } from "@/features/build/DagView";
@@ -334,19 +334,7 @@ export function Workspace() {
 
   return (
     <div className="flex h-full flex-col">
-      <StatusLine>
-        <StatusItem label="run" value={(isLive ? state.runId : (runId ?? "")).slice(0, 8)} />
-        <StatusSep />
-        <StatusItem
-          label="status"
-          live={resuming || (!isFailed && !isDone)}
-          value={
-            <span className={cn(isFailed && "text-danger", isDone && "text-ok")}>
-              {resuming ? "loading" : notFound ? "not found" : state.status.replace(/_/g, " ")}
-            </span>
-          }
-        />
-      </StatusLine>
+      <StatusLine />
 
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
         <div className="flex items-center gap-2 text-sm font-medium">

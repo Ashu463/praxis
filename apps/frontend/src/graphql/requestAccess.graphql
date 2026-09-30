@@ -1,0 +1,4 @@
+# Public: a visitor asking for build access from the Contact box.
+mutation RequestAccess($email: String!) {
+  requestAccess(email: $email)
+}

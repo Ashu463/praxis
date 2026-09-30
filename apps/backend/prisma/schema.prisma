@@ -223,3 +223,10 @@ model RunEvent {
 
   @@index([runId, createdAt])
 }
+// Someone asking to be allowed to build — no account needed, so keyed by email alone.
+model AccessRequest {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

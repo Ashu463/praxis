@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { useTheme, type Accent } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
@@ -6,24 +7,29 @@ const SWATCHES: { id: Accent; label: string; from: string; to: string }[] = [
   { id: "neon", label: "Neon Blue & Green", from: "#00FFFF", to: "#39FF14" },
 ];
 
-export function AccentPicker({ expanded = false }: { expanded?: boolean }) {
+// Enclosed pill: "Accent" label, then the two swatches split by a hairline.
+export function AccentPicker() {
   const { accent, setAccent } = useTheme();
 
   return (
-    <div className={cn("flex gap-1.5", expanded ? "px-3 py-2" : "flex-col items-center py-1")}>
-      {SWATCHES.map((s) => (
-        <button
-          key={s.id}
-          title={s.label}
-          onClick={() => setAccent(s.id)}
-          className={cn(
-            "h-5 w-5 shrink-0 rounded-full ring-2 ring-offset-2 ring-offset-surface transition-shadow",
-            accent === s.id ? "ring-foreground/70" : "ring-transparent",
-          )}
-          style={{ background: `linear-gradient(135deg, ${s.from}, ${s.to})` }}
-        />
+    <div className="flex items-center gap-2.5 rounded-xl border border-border-hover px-3 py-1.5">
+      <span className="text-muted-foreground">Accent</span>
+      {SWATCHES.map((s, i) => (
+        <Fragment key={s.id}>
+          {i > 0 && <span className="h-4 w-px bg-border-hover" />}
+          <button
+            title={s.label}
+            aria-label={s.label}
+            aria-pressed={accent === s.id}
+            onClick={() => setAccent(s.id)}
+            className={cn(
+              "h-4 w-4 shrink-0 rounded-full ring-2 ring-offset-2 ring-offset-surface transition-shadow",
+              accent === s.id ? "ring-foreground/70" : "ring-transparent opacity-70 hover:opacity-100",
+            )}
+            style={{ background: `linear-gradient(135deg, ${s.from}, ${s.to})` }}
+          />
+        </Fragment>
       ))}
-      {expanded && <span className="ml-1 self-center text-xs text-muted-foreground">Accent</span>}
     </div>
   );
 }

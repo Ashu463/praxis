@@ -1,6 +1,5 @@
 import { FieldNotesPage } from "@/features/shell/FieldNotesPage";
 import { FieldNoteEntry } from "@/features/shell/FieldNoteEntry";
-import { StatusItem } from "@/features/shell/StatusLine";
 
 const TOC = [
   ["why this stack", "why-this-stack"],
@@ -17,7 +16,6 @@ export function Docs() {
       eyebrow="field notes"
       title="The full build journey"
       dek="Not documentation of an API — a log of the tradeoffs made building this engine alone. Each entry is a real fork in the road, what I chose, and what I gave up."
-      statusRight={<StatusItem label="entries" value="6" />}
       toc={TOC.map(([label, id]) => (
         <a key={id} href={`#${id}`} className="transition-colors hover:text-foreground">
           {label}
@@ -26,7 +24,7 @@ export function Docs() {
     >
       <div className="doc-content mt-6">
         <p>
-          This is the longer version of the <a href="/architecture">architecture page</a> — the reasoning behind
+          This is the longer version of the <a href="/#architecture">architecture map</a> — the reasoning behind
           each decision, not just the decision itself.
         </p>
       </div>
@@ -83,7 +81,7 @@ export function Docs() {
           endpoint, and if one doesn&rsquo;t exist, stop and ask instead of
           stubbing it. That rule is directly responsible for two real
           findings in this build: the missing SSE emit calls (see the{" "}
-          <a href="/architecture">architecture page</a>), and the missing
+          <a href="/#architecture">architecture map</a>), and the missing
           file-read endpoint that the workspace&rsquo;s Code tab needs. Both
           got surfaced and either fixed or explicitly tracked, instead of
           getting quietly faked with placeholder JSON that would have looked

@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
-import { Sidebar } from "@/features/shell/Sidebar";
-import { StatusLine, StatusItem, StatusSep } from "@/features/shell/StatusLine";
+import { StatusLine } from "@/features/shell/StatusLine";
 
 export function FieldNotesPage({
   eyebrow,
@@ -8,7 +7,6 @@ export function FieldNotesPage({
   dek,
   toc,
   hero,
-  statusRight,
   children,
 }: {
   eyebrow: string;
@@ -16,18 +14,12 @@ export function FieldNotesPage({
   dek: string;
   toc?: ReactNode;
   hero?: ReactNode;
-  statusRight?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <div className="flex h-full">
-      <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
-        <StatusLine>
-          <StatusItem label="orchestrator" value="online" live />
-          <StatusSep />
-          {statusRight}
-        </StatusLine>
+        <StatusLine />
 
         <main className="flex-1 overflow-y-auto">
           {hero}

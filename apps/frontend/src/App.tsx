@@ -1,11 +1,10 @@
 import { GoogleOAuthProvider } from "@react-oauth/google";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "@/lib/auth";
 import { RunProvider } from "@/lib/run";
 import { ThemeProvider } from "@/lib/theme";
 import { Home } from "@/pages/Home";
 import { Workspace } from "@/pages/Workspace";
-import { Architecture } from "@/pages/Architecture";
 import { Docs } from "@/pages/Docs";
 import { Resources } from "@/pages/Resources";
 import { Projects } from "@/pages/Projects";
@@ -27,7 +26,8 @@ function App() {
                   <Routes>
                     <Route path="/" element={<Home />} />
                     <Route path="/w/:runId" element={<Workspace />} />
-                    <Route path="/architecture" element={<Architecture />} />
+                    {/* the architecture now lives on the landing page as an interactive map */}
+                    <Route path="/architecture" element={<Navigate to="/#architecture" replace />} />
                     <Route path="/docs" element={<Docs />} />
                     <Route path="/resources" element={<Resources />} />
                     <Route path="/projects" element={<Projects />} />
