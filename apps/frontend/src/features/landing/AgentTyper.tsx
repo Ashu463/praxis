@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const AGENTS = ["Coder Agent", "Designer Agent", "Debugger Agent"];
+const AGENTS = ["Designer Agent", "Coder Agent", "Debugger Agent"];
 
 // Types each agent name, holds, deletes, moves to the next — in the wordmark's gradient.
 export function AgentTyper() {

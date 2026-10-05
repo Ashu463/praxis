@@ -4,14 +4,10 @@ import { prisma } from "../lib/prisma";
 
 export interface GraphQLContext {
   prisma: typeof prisma;
-  // Null for anonymous callers (signup/login) and for internal service calls,
-  // which authenticate as the system rather than as an end user.
   user: { id: string; email: string } | null;
   isInternal: boolean;
 }
 
-// Takes just the headers rather than a full express Request, so the Apollo
-// middleware and the graphql-sse handler can both build a context from it.
 export async function createContext({
   req,
 }: {
@@ -27,8 +23,6 @@ export async function createContext({
     return { prisma, user: null, isInternal: false };
   }
 
-  // Same shared-secret escape hatch the REST `auth` middleware uses, so the
-  // agent worker can call as a trusted system caller with no end user.
   if (token === process.env.INTERNAL_SERVICE_TOKEN) {
     return { prisma, user: null, isInternal: true };
   }
@@ -49,8 +43,6 @@ export async function createContext({
 
     return { prisma, user, isInternal: false };
   } catch {
-    // An invalid token is left to `requireUser` to reject, so that public
-    // operations still resolve when a stale token happens to be attached.
     return { prisma, user: null, isInternal: false };
   }
 }

@@ -4,8 +4,6 @@ import type { GraphQLContext } from "../context";
 import { requireUser } from "../context";
 import { loadOwnedProject, loadViewableProject } from "../authz";
 
-// Matches the frontend's ADMIN_EMAIL — the demo-gate account whose projects
-// are visible to any logged-in viewer, read-only.
 const ADMIN_EMAIL = "ashukasaudhan971@gmail.com";
 import { R2 } from "../../../../../packages/agents/agent/services/file-storage/fileStorage";
 import { E2BSandbox } from "../../../../../packages/agents/agent/utils/sandbox";
@@ -15,14 +13,10 @@ const r2 = new R2();
 
 
 export const projectResolvers = {
-  // Both fields hit the runs table per project, so a long list costs one query
-  // each — worth a DataLoader if these lists ever grow past a page.
   Project: {
     title: async (parent: { id: string; name: string | null }, _args: unknown, ctx: GraphQLContext) => {
       if (parent.name?.trim()) return parent.name;
 
-      // Projects created by createRun have no name, so fall back to the prompt
-      // that started the session.
       const first = await ctx.prisma.run.findFirst({
         where: { projectId: parent.id },
         orderBy: { startedAt: "asc" },
@@ -85,8 +79,6 @@ export const projectResolvers = {
           });
         }
 
-        // Keep the stored run_completed event in sync so the run state the
-        // workspace reads on load hands back the refreshed URL, not a dead one.
         if (latestRun?.status === "COMPLETED") {
           const event = await ctx.prisma.runEvent.findFirst({
             where: { runId: latestRun.id, type: "run_completed" },
@@ -104,8 +96,6 @@ export const projectResolvers = {
           }
         }
       } catch (e) {
-        // A dead sandbox shouldn't fail the whole query — the project metadata
-        // is still useful, so previewUrl just comes back null.
         logger.error(`Failed to open sandbox for project ${project.id}: ${e}`);
       }
 
@@ -122,7 +112,6 @@ export const projectResolvers = {
       const prefix = r2.filesPrefix(project.userId, project.id);
       const keys = await r2.listFiles(prefix);
 
-      // Batched so a large project doesn't open hundreds of R2 reads at once.
       const files: { path: string; content: string }[] = [];
       for (let i = 0; i < keys.length; i += 10) {
         const batch = keys.slice(i, i + 10);
@@ -145,7 +134,6 @@ export const projectResolvers = {
       args: { name?: string | null },
       ctx: GraphQLContext,
     ) => {
-      // Owner comes from the verified token, never from client input.
       const user = requireUser(ctx);
 
       return ctx.prisma.project.create({
@@ -168,7 +156,6 @@ export const projectResolvers = {
       },
       ctx: GraphQLContext,
     ) => {
-      // Stars decide what's shown as "live projects" on the landing page, so only the admin curates them.
       if (args.starred != null && !ctx.isInternal && requireUser(ctx).email !== ADMIN_EMAIL) {
         throw new GraphQLError("Only the admin can star or unstar projects", {
           extensions: { code: "FORBIDDEN", http: { status: 403 } },
@@ -176,8 +163,6 @@ export const projectResolvers = {
       }
       const project = await loadOwnedProject(ctx, args.id);
 
-      // Only fields actually supplied are written, so omitting one leaves it
-      // alone rather than nulling it.
       const data: {
         name?: string;
         isArchived?: boolean;

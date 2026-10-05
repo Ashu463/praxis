@@ -6,15 +6,7 @@ import { loadOwnedProject, loadOwnedRun, loadOwnedRunById, loadViewableRunById }
 import { runQueue } from "../../lib/queue";
 import { logger } from "../../lib/utils";
 
-// A genuinely active run — simple or complex — always has something recent in
-// its event stream: a subagent tick, a tool call, a merge-gate iteration.
-// Silence past this window means nothing is going to advance the run, not a
-// slow LLM call (even a 162s single-turn generation we've seen is well under
-// this). Generous on purpose: a false "stalled" hides a real completion
-// behind a scary error; a slow true positive just takes a few extra minutes
-// to surface.
 const STALLED_THRESHOLD_MS = 5 * 60 * 1000;
-
 
 export const chatResolvers = {
   Query: {
@@ -25,8 +17,6 @@ export const chatResolvers = {
     ) => {
       const run = await loadViewableRunById(ctx, args.runId);
 
-      // Each status has one event type worth replaying; anything else has no
-      // pending UI to restore.
       const eventTypeForStatus: Record<string, string> = {
         CLARIFICATION_NEEDED: "clarification_needed",
         AWAITING_DESIGN_SELECTION: "select_design",
@@ -50,18 +40,6 @@ export const chatResolvers = {
         run.status === "AWAITING_DESIGN_SELECTION" ||
         run.status === "AWAITING_UI_PREFERENCE";
 
-      // A run only leaves IN_PROGRESS when the agent emits a terminal event, so
-      // a worker restart or a job that died mid-flight leaves the row building
-      // forever — this is what stalled is meant to catch. It used to check
-      // BullMQ (waiting/active/delayed) for a pending job, but a complex run's
-      // real work happens in Inngest once the initial BullMQ "prep" job hands
-      // off to it — that handoff is early in the run, so BullMQ had nothing
-      // pending for the rest of a complex run's lifetime and this reported
-      // stalled=true (and the frontend showed "stopped unexpectedly") on any
-      // refresh mid-build, complete or not. Every agent action — subagent
-      // start/progress/completion, tool calls — writes a RunEvent, so its own
-      // recency is a queue-agnostic heartbeat: a run genuinely still working
-      // keeps producing events; one that's actually dead goes silent.
       let stalled = false;
       if (run.status === "IN_PROGRESS") {
         const lastEvent = await ctx.prisma.runEvent.findFirst({
@@ -98,8 +76,6 @@ export const chatResolvers = {
       args: { projectId?: string | null; userPrompt: string; sandboxId?: string | null },
       ctx: GraphQLContext,
     ) => {
-      // Identity comes from the verified token — the REST route read it from a
-      // client-supplied `userid` header, which any caller could set freely.
       const user = requireUser(ctx);
 
       if (!args.userPrompt.trim()) {
@@ -118,11 +94,6 @@ export const chatResolvers = {
 
       let sandboxId = args.sandboxId ?? null;
       if (args.projectId && !sandboxId) {
-        // Reuse the last completed run's sandbox if the caller didn't hand
-        // one in — narrative continuity (priorRunSummary) used to be fetched
-        // here too, but that value never survived a continueRun re-enqueue
-        // (see packages/agents/agent/callAgent.ts::loadProjectContext, which
-        // fetches it live instead, correctly, on every Execute() call).
         const lastRun = await ctx.prisma.run.findFirst({
           where: { projectId, status: "COMPLETED" },
           orderBy: { startedAt: "desc" },
@@ -198,10 +169,6 @@ export const chatResolvers = {
         });
       }
 
-      // Answers arrive keyed by question text (AgentAnswerInput), so they're
-      // matched back to the saved rows here. Without this the answers only
-      // ever lived in this one job payload and were lost the moment the run
-      // paused again for a UI preference.
       for (const given of args.answers) {
         const question = await ctx.prisma.question.findFirst({
           where: { projectId: args.projectId, question: given.question },
@@ -222,8 +189,6 @@ export const chatResolvers = {
         });
       }
 
-      // Persisted here (not just passed through job data) so they're fetchable
-      // by every future run on this project, not just this one.
       for (const pref of args.uiPreferenceAnswers) {
         const question = await ctx.prisma.uIPreferenceQuestion.findFirst({
           where: { id: pref.questionId, projectId: args.projectId },
@@ -266,8 +231,6 @@ export const chatResolvers = {
         logger.info(`Continuing run ${run.id}`);
       } catch (e) {
         logger.error(`Failed to re-enqueue run ${run.id}: ${e}`);
-        // Put the run back where it was so the client can retry, rather than
-        // leaving it stuck IN_PROGRESS with nothing working on it.
         await ctx.prisma.run.update({
           where: { id: run.id },
           data: { status: run.status },

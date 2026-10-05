@@ -1,7 +1,7 @@
 import { GraphQLError } from "graphql";
 import { randomUUIDv7 } from "bun";
 import type { GraphQLContext } from "../context";
-import { loadOwnedProject, loadOwnedRun, loadViewableProject } from "../authz";
+import {loadOwnedRun, loadViewableProject } from "../authz";
 
 
 export const questionResolvers = {
@@ -24,8 +24,6 @@ export const questionResolvers = {
       ctx: GraphQLContext,
     ) => {
       await loadViewableProject(ctx, args.projectId);
-      // Scoped through the question, not the run — an answer given in an
-      // earlier round still applies to every later round of the project.
       return ctx.prisma.answers.findMany({
         where: {
           question: { projectId: args.projectId },
@@ -54,8 +52,6 @@ export const questionResolvers = {
         });
       }
 
-      // Validated up front so a bad id fails the whole mutation instead of
-      // leaving some answers written and others not.
       const questions = await ctx.prisma.question.findMany({
         where: {
           id: { in: args.answers.map((a) => a.questionId) },

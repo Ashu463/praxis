@@ -1,9 +1,3 @@
-// The schema lives in ./schema/*.graphql, one file per domain, next to the
-// resolvers that implement it in ./modules. Keeping it in real .graphql files
-// (rather than template literals) means editors syntax-highlight it and GitHub
-// counts the project as using GraphQL.
-//
-// base must come first: the domain files `extend` the root types it declares.
 import base from "./schema/base.graphql" with { type: "text" };
 import user from "./schema/user.graphql" with { type: "text" };
 import project from "./schema/project.graphql" with { type: "text" };

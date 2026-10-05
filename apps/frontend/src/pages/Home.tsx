@@ -39,7 +39,7 @@ export function Home() {
             <div className="mx-auto grid max-w-[1400px] items-center gap-12 lg:grid-cols-[1fr_1.05fr]">
               <div ref={heroRef} className="reveal-stagger">
                 {/* wordmark first: the name is the headline, the promise follows */}
-                <h1 className="text-gradient-accent pr-3 font-serif text-8xl leading-none italic sm:text-9xl lg:text-[10rem]">
+                <h1 className="text-gradient-accent serif-accent pr-3 font-serif text-8xl leading-none italic sm:text-9xl lg:text-[10rem]">
                   Praxis
                 </h1>
 

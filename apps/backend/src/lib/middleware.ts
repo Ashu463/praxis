@@ -22,8 +22,6 @@ export function auth(
 
   const token = authHeader.split(" ")[1];
 
-  // The agent worker calls these same /api/* routes as a trusted system
-  // caller (no end user in context) — a shared secret instead of a JWT.
   if (token === process.env.INTERNAL_SERVICE_TOKEN) {
     return next();
   }
@@ -47,8 +45,6 @@ export function auth(
   }
 }
 
-// For service-to-service calls from the agent worker (session state/event
-// persistence) — a shared secret, not a user JWT.
 export function internalAuth(
   req: Request,
   res: Response,

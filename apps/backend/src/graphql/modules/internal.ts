@@ -3,9 +3,6 @@ import type { GraphQLContext } from "../context";
 import { requireInternal } from "../authz";
 import { logger } from "../../lib/utils";
 
-// Statuses the run moves to when the orchestrator emits a terminal event. This
-// is the authoritative write — the redis pub/sub path only fires when a browser
-// happens to be connected.
 const STATUS_FOR_EVENT: Record<string, "CLARIFICATION_NEEDED" | "AWAITING_DESIGN_SELECTION" | "AWAITING_UI_PREFERENCE" | "COMPLETED" | "FAILED"> = {
   clarification_needed: "CLARIFICATION_NEEDED",
   select_design: "AWAITING_DESIGN_SELECTION",
@@ -194,8 +191,6 @@ export const internalResolvers = {
       requireInternal(ctx);
 
       try {
-        // Snapshots arrive already JSON.stringify'd — re-encoding here would
-        // double-escape whatever the caller sent.
         await ctx.prisma.run.update({
           where: { id: args.runId },
           data: {
@@ -241,8 +236,6 @@ export const internalResolvers = {
       requireInternal(ctx);
 
       try {
-        // updateMany with a name: null filter makes this a no-op once the
-        // project is named — the first run wins and follow-ups can't rename it.
         const { count } = await ctx.prisma.project.updateMany({
           where: { id: args.projectId, name: null },
           data: { name: args.name },

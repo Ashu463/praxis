@@ -10,9 +10,6 @@ import { accessResolvers } from "./modules/access";
 import { streamResolvers } from "./modules/stream";
 import { internalResolvers } from "./modules/internal";
 
-// Merged one domain at a time as the REST routers in src2/ are ported. Every
-// shared type is spread rather than assigned, because three modules contribute
-// fields to Project and a plain assignment would drop all but the last.
 export const resolvers = {
   DateTime: DateTimeScalar,
   JSON: JSONScalar,

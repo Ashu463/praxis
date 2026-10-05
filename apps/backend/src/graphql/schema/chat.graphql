@@ -1,4 +1,3 @@
-# Starting, resuming and reopening a run. Resolvers: ../modules/chat.ts
 
 "An answer as the agent consumes it — question text, not id. See AnswerQuestionInput for the persisted shape."
 input AgentAnswerInput {

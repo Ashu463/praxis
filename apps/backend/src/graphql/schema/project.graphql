@@ -1,4 +1,3 @@
-# Projects, their sandbox session and synced files. Resolvers: ../modules/project.ts
 
 type Project {
   id: ID!

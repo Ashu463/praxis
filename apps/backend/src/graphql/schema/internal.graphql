@@ -1,7 +1,3 @@
-# Service-to-service mutations for the agent worker. Resolvers: ../modules/internal.ts
-#
-# These carry no end user — they authenticate with the shared
-# INTERNAL_SERVICE_TOKEN, and a normal user JWT is rejected with FORBIDDEN.
 
 "A question as the planner produces it — note 'option', not 'options'."
 input PlannedQuestionInput {

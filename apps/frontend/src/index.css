@@ -182,6 +182,12 @@
     animation: dash-flow 1.1s linear infinite;
   }
 
+  /* Instrument Serif italic sets tight letter and word spacing; open both up wherever it's used as an accent */
+  .serif-accent {
+    letter-spacing: 0.03em;
+    word-spacing: 0.15em;
+  }
+
   /* scroll reveal: a small spring overshoot, then it sits exactly on the grid */
   .reveal {
     opacity: 0;

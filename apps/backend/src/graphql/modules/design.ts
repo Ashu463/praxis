@@ -3,8 +3,6 @@ import type { GraphQLContext } from "../context";
 import { loadOwnedProject, loadViewableProject } from "../authz";
 
 
-// updateMany + update must land together, or a failure between them leaves the
-// project with no selected design at all.
 async function applySelection(ctx: GraphQLContext, projectId: string, designId: string) {
   const [, selected] = await ctx.prisma.$transaction([
     ctx.prisma.design.updateMany({ where: { projectId }, data: { isSelected: false } }),
@@ -27,8 +25,6 @@ export const designResolvers = {
       });
     },
 
-    // Nullable rather than the REST 404: "no design picked yet" is a normal
-    // state, not an error.
     selectedDesign: async (
       _parent: unknown,
       args: { projectId: string },

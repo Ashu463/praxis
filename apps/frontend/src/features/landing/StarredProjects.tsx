@@ -89,7 +89,7 @@ export function StarredProjects() {
       <div ref={ref} className="reveal-stagger mx-auto max-w-[1400px]">
         <h2 className="mb-8 font-display text-4xl font-semibold tracking-tight">
           Live projects{" "}
-          <span className="text-gradient-accent pr-0.5 font-serif font-normal italic">
+          <span className="text-gradient-accent serif-accent pr-0.5 font-serif font-normal italic">
             Praxis
           </span>{" "}
           built

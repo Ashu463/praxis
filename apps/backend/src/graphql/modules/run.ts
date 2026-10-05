@@ -10,8 +10,6 @@ export const runResolvers = {
       ctx: GraphQLContext,
     ) => {
       await loadViewableProject(ctx, args.projectId);
-      // No `select` here as the REST route had — the client's query decides
-      // which fields come back.
       return ctx.prisma.run.findMany({
         where: { projectId: args.projectId },
         orderBy: { startedAt: "desc" },
@@ -82,9 +80,6 @@ export const runResolvers = {
     },
   },
 
-  // Nested fields are only hit when a query actually selects them, so the extra
-  // round trips are opt-in. Worth a DataLoader once list queries start selecting
-  // them heavily.
   Project: {
     runs: (parent: { id: string }, _args: unknown, ctx: GraphQLContext) =>
       ctx.prisma.run.findMany({

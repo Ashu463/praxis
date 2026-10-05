@@ -104,17 +104,13 @@ export const userResolvers = {
         });
       }
 
-      // TEMP DEBUG — remove once sign-in is confirmed working.
       logger.info(`Google token verified for ${profile.email}, querying Postgres now`);
       let user = await ctx.prisma.user.findUnique({
         where: { googleId: profile.googleId },
       });
-      // TEMP DEBUG — remove once sign-in is confirmed working.
       logger.info(`Postgres lookup done, user found=${!!user}`);
 
       if (!user) {
-        // An account may already exist from email/password signup — link the
-        // Google identity to it rather than creating a duplicate.
         const existingByEmail = await ctx.prisma.user.findUnique({
           where: { email: profile.email },
         });

@@ -1,4 +1,3 @@
-# Accounts and authentication. Resolvers: ../modules/user.ts
 
 type User {
   id: ID!

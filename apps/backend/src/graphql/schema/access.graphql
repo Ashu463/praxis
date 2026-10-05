@@ -1,5 +1,3 @@
-# Requests for build access from visitors. Resolvers: ../modules/access.ts
-
 extend type Mutation {
   "Records a request for build access. Public — the visitor has no account yet. Re-requesting with the same email is a no-op."
   requestAccess(email: String!): Boolean!

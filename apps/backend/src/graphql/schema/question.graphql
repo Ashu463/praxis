@@ -1,4 +1,3 @@
-# Clarification questions and their answers. Resolvers: ../modules/question.ts
 
 "An answer as it is stored — keyed by question id. See AgentAnswerInput for the shape the agent consumes."
 input AnswerQuestionInput {

@@ -13,7 +13,7 @@ export function RequestAccess() {
   return (
     <section ref={ref} id="access" className="reveal-stagger mx-auto max-w-2xl px-6 py-20 text-center">
       <h2 className="font-display text-4xl font-semibold tracking-tight">
-        Want to <span className="text-gradient-accent pr-1 font-serif font-normal italic">build</span> with Praxis?
+        Want to <span className="text-gradient-accent serif-accent pr-1 font-serif font-normal italic">build</span> with Praxis?
       </h2>
       <p className="mt-3 mb-8 text-muted">Building is limited to approved accounts. Leave your email to ask for permission.</p>
 

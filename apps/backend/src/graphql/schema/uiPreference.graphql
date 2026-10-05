@@ -1,6 +1,3 @@
-# Project-level UI preferences (color palette/mood/visual direction), asked
-# once via their own questions separate from general clarification, and reused
-# by every UIExpert task from then on. Resolvers: ../modules/uiPreference.ts
 
 type UIPreferenceQuestion {
   id: ID!

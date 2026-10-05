@@ -1,4 +1,3 @@
-# Generated design variants and which one is selected. Resolvers: ../modules/design.ts
 
 type Design {
   id: ID!

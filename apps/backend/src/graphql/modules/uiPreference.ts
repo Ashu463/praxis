@@ -1,7 +1,7 @@
 import { GraphQLError } from "graphql";
 import { randomUUIDv7 } from "bun";
 import type { GraphQLContext } from "../context";
-import { loadOwnedProject, loadOwnedRun, loadViewableProject } from "../authz";
+import {  loadOwnedRun, loadViewableProject } from "../authz";
 
 export const uiPreferenceResolvers = {
   Query: {
@@ -23,8 +23,6 @@ export const uiPreferenceResolvers = {
       ctx: GraphQLContext,
     ) => {
       await loadViewableProject(ctx, args.projectId);
-      // Every answered preference, not just the latest — they're separate
-      // facets (palette, mood, density), so they all stay in effect.
       return ctx.prisma.uIPreferenceAnswer.findMany({
         where: { projectId: args.projectId },
         orderBy: { answeredAt: "asc" },

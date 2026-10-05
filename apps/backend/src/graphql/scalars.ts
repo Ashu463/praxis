@@ -1,6 +1,5 @@
 import { GraphQLScalarType, Kind, type ValueNode } from "graphql";
 
-// Prisma hands us JS Date objects; the wire format is ISO-8601 strings.
 export const DateTimeScalar = new GraphQLScalarType({
   name: "DateTime",
   description: "An ISO-8601 encoded UTC date-time string",
@@ -26,8 +25,6 @@ export const DateTimeScalar = new GraphQLScalarType({
   },
 });
 
-// Todo.agentSpecificData is a free-form Prisma Json column, so there is no fixed
-// shape to model as a GraphQL type. Values pass through untouched.
 export const JSONScalar = new GraphQLScalarType({
   name: "JSON",
   description: "Arbitrary JSON value",
