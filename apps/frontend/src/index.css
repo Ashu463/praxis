@@ -1,12 +1,14 @@
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Instrument+Serif:ital@1&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Hanken Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Instrument+Serif:ital@1&family=Unbounded:wght@500;600&display=swap");
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-display: "Space Grotesk", "Inter", ui-sans-serif, sans-serif;
+  --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Space Grotesk", "Hanken Grotesk", ui-sans-serif, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
   /* playful counterweight: one italic serif word per headline, never a whole line */
   --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+  /* wide geometric sans for call-to-action lines that need to stand out from the Hanken Grotesk body */
+  --font-callout: "Unbounded", "Space Grotesk", ui-sans-serif, sans-serif;
 
   /* Control Room — instrument-panel dark. No light mode: the whole design
      language (status line, telemetry, hairline grid) is dark-first and
@@ -83,6 +85,12 @@
   @keyframes dash-flow {
     to {
       stroke-dashoffset: -28;
+    }
+  }
+  @keyframes queue-in {
+    from {
+      opacity: 0;
+      transform: translateX(-24px);
     }
   }
 }

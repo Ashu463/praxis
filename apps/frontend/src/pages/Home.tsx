@@ -43,6 +43,19 @@ export function Home() {
                   Praxis
                 </h1>
 
+                {/* serif italic echoes the wordmark so it reads as its tagline, set apart from the sans hook below */}
+                <p className="serif-accent mt-3 max-w-2xl font-serif text-2xl leading-snug italic sm:text-3xl">
+                  A perfect composition of{" "}
+                  <span className="text-gradient-accent pr-1">engineering</span> plus{" "}
+                  <span className="text-gradient-accent pr-1">AI agents</span>.
+                  <span className="mt-2 block font-mono text-sm tracking-wide not-italic text-muted">
+                    Don&rsquo;t trust it?{" "}
+                    <Link to="/#architecture" className="font-semibold text-accent underline-offset-4 hover:underline">
+                      See its architecture ↓
+                    </Link>
+                  </span>
+                </p>
+
                 {/* static on purpose: the replay on the right is the only thing moving */}
                 <p className="mt-5 font-display text-3xl leading-tight font-semibold tracking-tight sm:text-4xl">
                   Describe an app{firstName ? `, ${firstName}` : ""}.
