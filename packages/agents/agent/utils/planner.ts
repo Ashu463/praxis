@@ -11,16 +11,6 @@ import { E2BSandbox } from "./sandbox"
 import { PROJECT_ROOT, STITCH_DESIGN_CONCURRENCY, STITCH_DESIGN_RETRY_ATTEMPTS, STITCH_DESIGN_BACKOFF_MS } from "../config/systemConfig"
 import { logger } from "./logger"
 
-// Two-phase planner, extracted from Orchestrator so planning is an independent,
-// unit-testable piece. Phase 1 holds only the reasoning methods — both are pure
-// BAML calls, no sandbox. The design-generation half (Stitch + E2B) arrives in
-// Phase 2, which is when this constructor gains a sandbox.
-//
-// Both methods anchor their spans to the run trace via runSpanContext(runId) so
-// they merge with prep and the DAG into one Langfuse trace. Call them from
-// inside a step.run (Execute wraps them) — they never nest step.run themselves.
-// Outcome of generating one screen's design. `degraded` means Stitch failed
-// all retries — the run continues and that screen is built design-less.
 export type DesignResult = { screenId: string, status: 'generated' | 'reused' | 'degraded', reason?: string }
 
 export class Planner {
@@ -33,8 +23,6 @@ export class Planner {
         this.emitter = createRunEmitter(runId)
     }
 
-    // Call 1: what screens does this request need. Cheap/fast so the design
-    // phase (Phase 2) can start while planTasks runs concurrently.
     async enumerateScreens(request: string, context: string): Promise<PlannedScreen[]> {
         return startActiveObservation(
             "enumerate-screens",
@@ -52,15 +40,11 @@ export class Planner {
         )
     }
 
-    // Call 2: the task DAG, anchored to the enumerated screens so a uiExpert
-    // item's designRef only ever points at a screen that exists in the plan.
     async planTasks(request: string, context: string, screens: PlannedScreen[]): Promise<PlannerTodo[]> {
         return startActiveObservation(
             "plan-tasks",
             async (span): Promise<PlannerTodo[]> => {
                 span.update({ input: { request, screens: screens.length } })
-                // reasoning is CoT scratch space for the decomposition — kept
-                // on the trace for debugging, never persisted to the DB.
                 const { reasoning, todos } = await observeBaml(
                     "PlanTasks",
                     { request, screens: screens.length },
@@ -74,14 +58,6 @@ export class Planner {
         )
     }
 
-    // Persisted for the frontend's plan view; the executor reads todos from
-    // memory (Inngest-memoized step return), not from here. Non-throwing so a
-    // failed display-write never sinks the run.
-    //
-    // PlannedTodoInput only declares id/task/agent/status/dependency — mapped
-    // explicitly rather than passing PlannerTodo through as-is, since its
-    // extra fields (description/designRef/expectedToolCalls) are unknown
-    // input keys that make graphql-js reject the whole mutation.
     private async saveTodos(todos: PlannerTodo[]): Promise<void> {
         const input = todos.map(({ id, task, agent, status, dependency }) => ({ id, task, agent, status, dependency }))
         await backendGql(
@@ -92,16 +68,6 @@ export class Planner {
         ).catch(e => logger.error(`Failed to save todos for run ${this.runId}: ${e}`))
     }
 
-    // Design pre-phase (Phase 2). Generates every screen's Stitch design up
-    // front, keyed by the planner's stable screen id, so the DAG later just
-    // reads them. Bounded concurrency (pool) instead of a raw fan-out so we
-    // overlap the slow generations without stampeding the Stitch key.
-    //
-    // Failure is a VALUE, not an exception: after exhausting retries a screen
-    // is marked `degraded` and the others keep going — one flaky external call
-    // never sinks the whole build, and (once this is a step.run) no throw means
-    // no Inngest retry storm. sandbox is a method arg, not constructor state,
-    // so the planning methods above stay sandbox-free and unit-testable.
     async generateDesigns(screens: PlannedScreen[], sandbox: E2BSandbox): Promise<DesignResult[]> {
         return startActiveObservation(
             "generate-designs",
@@ -109,15 +75,7 @@ export class Planner {
                 span.update({ input: { screens: screens.length } })
                 await this.emitter.emit({ type: 'design_progress', message: `Designing ${screens.length} screen${screens.length === 1 ? '' : 's'}…` })
                 const results: DesignResult[] = []
-                // Each screen is its own independent Stitch project, so different
-                // screens can carry different literal values for the same token
-                // names (bg-surface, primary-container, ...). Rather than reconcile
-                // divergent palettes, whichever screen's config is captured first
-                // this run becomes the whole app's theme — coherent app-wide, not
-                // necessarily pixel-perfect to every individual screen's own
-                // generation. Plain check-and-set is race-safe here: JS is
-                // single-threaded, so there's no interleaving mid-check even though
-                // screens within a chunk resolve concurrently.
+
                 let capturedConfig: string | null = null
 
                 for (let i = 0; i < screens.length; i += STITCH_DESIGN_CONCURRENCY) {
@@ -127,8 +85,6 @@ export class Planner {
                             s.update({ input: { screenId: screen.id, name: screen.name } })
                             const path = designRefPath(screen.id)
 
-                            // Cross-run reuse: the sandbox persists, so a design
-                            // from a prior run is already here — don't re-Stitch it.
                             const existing = await sandbox.Execute(sandbox.sandboxId, { action: 'read', path }, PROJECT_ROOT).catch(() => null)
                             if (existing?.success && existing.content.length > 0) {
                                 s.update({ output: { status: 'reused' } })

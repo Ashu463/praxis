@@ -1,9 +1,7 @@
-import { b, type CoderContext, type DebuggerContext, type EpisodicMemory, type ResearcherContext, type Skill, type SubAgentsContext } from "../../baml_client"
-// import type { ContextStruct } from "../../types/agentTypes"
-import { COMPACT_CONTEXT_PROMPT, COMPRESS_EPISODIC_MEM_PROMPT, EPISODIC_MEMORY_GENERATOR_PROMPT, SUMMARIZE_CONTEXT_PROMPT } from "../config/systemPrompts"
-import { encoding_for_model } from "tiktoken"
+import { b, type CoderContext, type DebuggerContext, type Skill } from "../../baml_client"
+import { COMPACT_CONTEXT_PROMPT, SUMMARIZE_CONTEXT_PROMPT } from "../config/systemPrompts"
 import { type Message } from "../../baml_client"
-import { RECENT_TURNS_LIMIT, COMPACT_THRESHOLD, MAX_CONTEXT_WINDOW_LENGTH, TOOL_RESULT_MAX_CHARS, READ_RESULT_MAX_CHARS, WRITE_ECHO_MAX_CHARS } from "../config/systemConfig"
+import { RECENT_TURNS_LIMIT, TOOL_RESULT_MAX_CHARS, READ_RESULT_MAX_CHARS, WRITE_ECHO_MAX_CHARS } from "../config/systemConfig"
 import { observeBaml } from "./tracing"
 
 function truncate(text: string, limit: number): string {
@@ -81,63 +79,6 @@ export abstract class ContextManager<TContext>{
 
     constructor(){}
 
-    // almost 100k tokens
-    // async CompleteEpisodicSummary(session: string[]): Promise<EpisodicMemory>{
-    //     let epiSumm: EpisodicMemory
-    //     try{
-    //         epiSumm = await b.CompressContext(EPISODIC_MEMORY_GENERATOR_PROMPT, session)
-    //     }
-    //     catch(e){
-    //         console.error(e)
-    //         throw e
-    //     }
-    //     return epiSumm
-    // }
-
-    // async SummarizedEpisodicMem(episodicMemory: EpisodicMemory): Promise<string>{
-    //     let summary: string
-    //     try{
-    //         summary = await b.SummarizeEpisodic(COMPRESS_EPISODIC_MEM_PROMPT, episodicMemory)
-    //     }
-    //     catch(e){
-    //         console.error(e)
-    //         throw e
-    //     }
-    //     return summary
-    // }
-
-    // // would almost take 24K tokens
-    // async WorkingMemory(recentHistory: string, summarizedEpisodic: string, currToolResult?: string): Promise<string>{
-
-    //     return (
-    //         this.systemPrompt + 
-    //         this.originalTask + 
-    //         this.semanticMem + 
-    //         summarizedEpisodic + 
-    //         recentHistory + 
-    //         currToolResult
-    //     )
-    // }
-
-    // async BuildContext(recentHistory: string, session: string[], currToolResult?: string, ): Promise<string>{
-
-    //     // episodic memory
-    //     let episodicMemory: EpisodicMemory = await this.CompleteEpisodicSummary(session)
-    //     const SummarizedEpisodicMem: string = await this.SummarizedEpisodicMem(episodicMemory)
-
-    //     // working memory
-    //     const WorkingMemory: string = await this.WorkingMemory(recentHistory, SummarizedEpisodicMem, currToolResult)
-
-    //     // semantic one from mem0 itself.
-    //     const semanticMem: string = mem0.retrieve(`${currToolResult + recentHistory}`)
-    //     return (WorkingMemory + JSON.stringify(episodicMemory) + semanticMem)
-    
-    // estimateTokens(context: Message[]): number {
-    //     const encoder = encoding_for_model("gpt-4o")
-    //     return encoder.encode(context.map(m => m.content).join('')).length
-    // }
-    // }
-
     // Context Reduction
     abstract CompactContext(context: TContext): Promise<TContext>
         // compact 50% of the starting context, not the latest one until it gets 
@@ -149,7 +90,7 @@ export abstract class ContextManager<TContext>{
     
     // TODO: do this 
     abstract IsolateContext(): Promise<string>
-    // only for MCP or RAG 
+
     abstract OffLoadContext(): Promise<string>
 
     abstract appendTurn(context: TContext, res: any, toolRes: any): TContext

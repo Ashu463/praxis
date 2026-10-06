@@ -15,30 +15,15 @@ const SERVER_CONFIGS: Record<string, ServerConfig> = {
         args: ["-y", "tavily-mcp@latest"],
         env: process.env.TAVILY_API_KEY
     },
-    figma: {
-        command: "npx",
-        args: ["-y", "figma-developer-mcp", "--studio"],
-        env: process.env.FIGMA_API_KEY
-    },
     context7: {
         command: "npx",
         args: ["-y", "@upstash/context7-mcp@latest"],
         env: process.env.CONTEXT7_API_KEY
     },
-    stitch: {
-        command: "node",
-        args: ["./services/stitch-server.js"],
-        env: process.env.STITCH_API_KEY
-    },
     apify:{
         command: "npx",
         args: ["-y", "@apify/actors-mcp-server"]
     },
-    vercel: {
-        command: "npx",
-        args: ["-y", "vercel-mcp-server"],
-        env: process.env.VERCEL_TOKEN
-    }
 }
 const clients : Map<string, Client> = new Map()
 async function getClient(serverName: string) : Promise<Client>{

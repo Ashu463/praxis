@@ -28,17 +28,7 @@ export class TesterAgent extends BaseAgent<TesterInput, TesterContext, TesterLLM
         let stdOutBuf = ""
         let stdErrBuf = ""
         const sandbox = await Sandbox.connect(this.sandbox.sandboxId)
-        // --host 0.0.0.0 + --strictPort match GetPreviewUrl's own dev command
-        // (sandbox.ts) exactly, and for the same reasons: vite otherwise binds
-        // localhost-only, which the sandbox's external proxy can't route to,
-        // and the env var is required too — vite always allows a plain
-        // "localhost" request but 403s the proxied e2b hostname unless it's
-        // explicitly allow-listed. Without it, fetch() gets a real (non-ok)
-        // response instead of a connection error, so pollUntilUp still spins
-        // until timeout even against a perfectly healthy server.
-        // Runs on TESTER_PREVIEW_PORT, deliberately NOT PREVIEW_PORT: GetPreviewUrl
-        // serves the user's live app there and `pkill -f vite`s before it starts, so
-        // sharing a port made the two kill each other (see TESTER_PREVIEW_PORT).
+        // binding it strictly to the port of tester.
         const handle = await sandbox.commands.run(`cd ${PROJECT_ROOT} && npm run dev -- --host 0.0.0.0 --port ${TESTER_PREVIEW_PORT} --strictPort`, {
             background: true,
             envs: { __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: '.e2b.app' },

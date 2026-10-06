@@ -1,5 +1,5 @@
 import { Inngest } from "inngest"
-import type { CallAgentResponse, CallAgentSSE, Project, User, Answers, BootstrapResponse, DesignOption, UIPreferenceQA, UIPreferenceQuestion } from "../types/callAgentTypes"
+import type { CallAgentResponse, Answers, BootstrapResponse, DesignOption, UIPreferenceQA, UIPreferenceQuestion } from "../types/callAgentTypes"
 import { E2BSandbox } from "./utils/sandbox"
 import { b } from "../baml_client"
 import {type Error, type Question, type PlannerTodo, type ToolResult} from '../baml_client/types'
@@ -11,7 +11,6 @@ import { observeBaml, runSpanContext } from "./utils/tracing"
 import { startObservation } from "@langfuse/tracing"
 import { UIExpert } from "./subagents/uiExpert"
 import type { SubAgentType } from "../types/subAgentsTypes"
-import { deployReactApp, type DeploymentResult } from "./MCPs/vercel"
 import { createRunEmitter, type EventEmitter } from "./events"
 import { backendGql } from "./utils/backendClient"
 import { summarizeIncompleteSession } from "./utils/priorRunSummary"
@@ -40,7 +39,6 @@ export class CallAgent{
     private uiPreferences: UIPreferenceQA[] = []
     private emitter: EventEmitter
     private skillStore: SkillStore = new SkillStore()
-    private isComplex: boolean
     constructor(
         public userId: string,
         public projectId: string,
@@ -78,10 +76,11 @@ export class CallAgent{
         const designs = bootstrap.designs
         const cachedIsComplex = bootstrap.project.isComplex
         const answers = bootstrap.answers
+        // Fetching part done from db i.e. questions, complexity, UI preferences, and UI QnAs.
         logger.info(`Fetched ${questions.length} saved question(s) and ${designs.length} saved design(s)`)
-        // Unanswered ones first, same as the UI preference gate below: a round
-        // is still outstanding, so re-ask it rather than spending another
-        // clarification call on a prompt we already know is ambiguous.
+        
+        
+
         if(questions.length > 0){
             logger.info(`Reusing previously generated questions, skipping complexity/clarification checks`)
             startObservation("reused-questions", {input: {count: questions.length}}, {asType: "event"}).end()
@@ -263,6 +262,8 @@ export class CallAgent{
 
     private async loadProjectContext(): Promise<void> {
         try {
+            // Loading previsou run summaries and last run's narrative to share the project context. helpful for Long Running chats
+            //Narrative is just for setting context in case of failed runs, so that agents doesn't lose what went wrong previously.
             const res = await backendGql<{
                 projectTaskSummaries: { summary: string, todo: { taskId: number, task: string, agent: SubAgentType } }[],
                 lastRunNarrativeSource: { summary: string | null, incompleteSessionSnapshot: string | null },
@@ -308,6 +309,7 @@ export class CallAgent{
                 logger.error(`Development gate check failed, defaulting to development: ${e}`)
                 verdict = { isDevelopment: true }
             }
+            // Checking for dev/build request and then responding accordingly.
             if(!verdict.isDevelopment){
                 logger.info(`Message judged conversational, skipping the build pipeline`)
                 let reply: string
@@ -341,7 +343,6 @@ export class CallAgent{
             }
         }
 
-        // this is waste, selected design id is saved to db first then called here. 
         if(selectedDesignId){
             await backendGql(
                 `mutation SelectDesign($projectId: ID!, $designId: ID!) {
@@ -402,9 +403,9 @@ export class CallAgent{
                 reason: data.error
             }
         }
-        if( data.isComplex === false){
+        // if( data.isComplex === false){
 
-        }
+        // }
         this.selectedDesign = data.selectedDesign ?? ""
         if (this.selectedDesign) {
             const path = `design/main-${this.projectId}.html`
@@ -437,9 +438,7 @@ export class CallAgent{
         }
         try{
             logger.info(`Dispatching ${data.isComplex ? 'complex' : 'simple'} run ${this.runId} to Inngest`)
-            data.isComplex ? 
-            await inngest.send({ name: "callAgent/run.complex", data: complexEventData}) :
-            await inngest.send({ name: "callAgent/run.simple", data: SimpleEventData })
+            data.isComplex ? await inngest.send({ name: "callAgent/run.complex", data: complexEventData}) : await inngest.send({ name: "callAgent/run.simple", data: SimpleEventData })
         }
         catch(e){
             const reason = `Failed to dispatch run to Inngest: ${e instanceof Error ? e.message : String(e)}`
@@ -447,22 +446,6 @@ export class CallAgent{
             return { status: 'error', reason }
         }
         return { status: 'in_progress', runId: this.runId }
-        // Deploy if only user says this explictily
-        // #TEST: replace with appropriate path of project directory
-        // const deployResult: DeploymentResult = await this.Deploy(`/home/usr/${this.userId}/projects/${this.projectId}`)
-        // if(deployResult.success){
-        //     return {
-        //         status: 'completed',
-        //         design: this.selectedDesign,
-        //         todos: data.isComplex ? tasks : [],
-        //         previewUrl: deployResult.url,
-        //         summary: callAgentSummary
-        //     }
-        // }
-        // return{
-        //     status: 'error',
-        //     reason: `Deployment failed`
-        // }
     }
     
 
@@ -473,13 +456,6 @@ export class CallAgent{
     // Orchestrator (which has its own equivalent plan()/runLevel()/
     // runMergeGate()/preDeployCheck internally). Removed rather than kept
     // dead, since nothing calls them anymore.
-
-    async Deploy(path: string): Promise<DeploymentResult>{
-        const result = await deployReactApp(path)
-        if(result.success) return result
-        // #TODO: failure handling and pushing into the tester debugger loop.
-        return result
-    }
 }
 
 // Wiring Inngest to the subagent and agent. 
@@ -506,29 +482,6 @@ type ComplexTask = {
 }
 export type RunEventData = SimpleTask | ComplexTask
 
-async function finalizeRun(step: StepRunner, data: RunEventData, summary: string, todos: PlannerTodo[], title?: string): Promise<void> {
-    const previewUrl: string = await step.run("preview-url", async () => {
-        const sandbox = await E2BSandbox.StartSandbox(data.userId, data.projectId, data.sandboxId)
-        return sandbox.GetPreviewUrl()
-    })
-    await step.run("save-run-summary", () => backendGql(
-        `mutation SaveRunSummary($runId: ID!, $summary: String!) {
-            saveRunSummary(runId: $runId, summary: $summary)
-        }`,
-        { runId: data.runId, summary },
-    ).catch((e) => logger.error(`Failed to save run summary for run ${data.runId}: ${e}`)))
-    if (title) {
-        await step.run("name-project", () => backendGql(
-            `mutation NameProject($projectId: ID!, $name: String!) {
-                nameProjectIfUnnamed(projectId: $projectId, name: $name)
-            }`,
-            { projectId: data.projectId, name: title },
-        ).catch((e) => logger.error(`Failed to save project title for run ${data.runId}: ${e}`)))
-    }
-
-    const result: CallAgentResponse = { status: 'completed', previewUrl, summary }
-    await step.run("emit-run-completed", () => createRunEmitter(data.runId).emit({ type: 'run_completed', result }))
-}
 
 export const runComplexTaskFn = inngest.createFunction(
     { id: "run-complex-task", triggers: [{ event: "callAgent/run.complex" }] },
@@ -585,9 +538,33 @@ export const runSimpleTaskFn = inngest.createFunction(
         }
     },
 )
+async function finalizeRun(step: StepRunner, data: RunEventData, summary: string, todos: PlannerTodo[], title?: string): Promise<void> {
+    const previewUrl: string = await step.run("preview-url", async () => {
+        const sandbox = await E2BSandbox.StartSandbox(data.userId, data.projectId, data.sandboxId)
+        return sandbox.GetPreviewUrl()
+    })
+    await step.run("save-run-summary", () => backendGql(
+        `mutation SaveRunSummary($runId: ID!, $summary: String!) {
+            saveRunSummary(runId: $runId, summary: $summary)
+        }`,
+        { runId: data.runId, summary },
+    ).catch((e) => logger.error(`Failed to save run summary for run ${data.runId}: ${e}`)))
+    if (title) {
+        await step.run("name-project", () => backendGql(
+            `mutation NameProject($projectId: ID!, $name: String!) {
+                nameProjectIfUnnamed(projectId: $projectId, name: $name)
+            }`,
+            { projectId: data.projectId, name: title },
+        ).catch((e) => logger.error(`Failed to save project title for run ${data.runId}: ${e}`)))
+    }
 
+    const result: CallAgentResponse = { status: 'completed', previewUrl, summary }
+    await step.run("emit-run-completed", () => createRunEmitter(data.runId).emit({ type: 'run_completed', result }))
+}
+// and this would be ultimately triggered by that worker who has picked the job. 
 export const functions = [runComplexTaskFn, runSimpleTaskFn]
 
+// --------------Brainstorming-----------------------
 // This one would be triggered when there will be no sub agents
 
 /* Subagents orchestration

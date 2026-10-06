@@ -13,8 +13,6 @@ import { observeBaml } from "../utils/tracing"
 
 type UIExpertRequest = {userPrompt: string, semanticMem: string}
 
-// Phase B: base-template tool loop, mechanically identical to CoderAgent's
-// (minus research/docs — see UI_EXPERT_BASE_TEMPLATE_PROMPT for why).
 type UIExpertLLMResponse = WriteFile | ReadFile | EditFile | RunCommand | DeleteFile | Done | Abort
 type UIExpertAgentResponse = {
     success: boolean,
@@ -85,10 +83,7 @@ export class UIExpert extends BaseAgent<UIExpertTaskInput, CoderContext, UIExper
 
         return html
     }
-    // Prefer the design the Planner generated up front (keyed by designRef,
-    // written at PROJECT_ROOT before worktrees exist). Only fall back to inline
-    // generation when there's no ref or the pre-phase degraded that screen — so
-    // the happy path no longer double-generates the design.
+    
     private async loadDesign(input: UIExpertTaskInput): Promise<string> {
         const designRef = input.designRef
         if (designRef) {

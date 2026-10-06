@@ -36,9 +36,6 @@ export async function makeOneScreen(prompt: string, userId: string): Promise<Scr
     logger.info(`Stitch project created: ${projectId}`)
     const project = stitch.project(projectId);
 
-    // This product only ships Vite/React web apps, so screens are always
-    // desktop/web. Stitch defaults an unspecified deviceType to a phone-shaped
-    // screen, so "DESKTOP" is pinned here — never mobile/tablet.
     const screen: Screen = await project.generate(prompt, "DESKTOP");
     logger.info(`Stitch screen generated: ${screen.screenId}`)
 
@@ -50,10 +47,6 @@ export async function makeOneScreen(prompt: string, userId: string): Promise<Scr
     return screen;
 }
 
-
-// Polls Stitch until the screen's HTML URL is ready, then fetches it.
-// Extracted here so both UIExpert and the Planner design pre-phase share one
-// implementation. (UIExpert keeps its own copy until Phase 4 removes it.)
 export async function fetchDesignHtml(screen: Screen): Promise<string> {
     let htmlUrl = await screen.getHtml();
     for (let attempt = 1; attempt <= 5 && !htmlUrl; attempt++) {
@@ -71,23 +64,12 @@ export async function fetchDesignHtml(screen: Screen): Promise<string> {
     return await res.text();
 }
 
-// One-shot: generate a screen and return its HTML. The unit the design
-// pre-phase retries and degrades on.
 export async function generateScreenHtml(prompt: string, userId: string): Promise<string> {
     const screen = await makeOneScreen(prompt, userId);
     return fetchDesignHtml(screen);
 }
 
-// Stitch's raw HTML embeds a Tailwind Play CDN config script — the color/
-// spacing/type dictionary that makes its semantic class names (bg-surface,
-// primary-container, headline-xl, etc.) resolve to real values instead of
-// nothing. This doesn't parse that dictionary (it isn't strict JSON — some
-// keys come back unquoted), just captures the raw script body verbatim so
-// the planner can relocate it into the project's own index.html.
 export function extractTailwindConfig(html: string): string | null {
     const match = html.match(/<script[^>]*id=["']tailwind-config["'][^>]*>([\s\S]*?)<\/script>/i);
     return match ? match[1].trim() : null;
 }
-
-// const res = await makeOneScreen("Make black todo screen", "user123")
-// console.log(await fetchDesignHtml(res))

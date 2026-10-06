@@ -18,10 +18,8 @@ type DebuggerRequest = {
   errors: Error[];
   toolResult?: ToolResult;
 };
-// TODO: implement line by line edit feature, instead writing complete file 
 type DebuggerLLMResponse = ReadFile | RunCommand | WriteFile | EditFile | DebuggingDone | Research | GetSkill | Abort
 
-// type DebuggerToolResponse =
 export class DebuggerAgent extends BaseAgent<DebuggerRequest, DebuggerContext, DebuggerLLMResponse, DebuggerAgentResponse>{
 
     private researcher: Researcher
@@ -52,8 +50,6 @@ export class DebuggerAgent extends BaseAgent<DebuggerRequest, DebuggerContext, D
         }
     }
     override async executeFunction(response: DebuggerLLMResponse): Promise<DebuggerAgentResponse | null> {
-        // research agent call
-        
         if(response.action === 'read' || 
             response.action === 'writeFile' || 
             response.action === 'runCommand' ||
@@ -104,7 +100,6 @@ export class DebuggerAgent extends BaseAgent<DebuggerRequest, DebuggerContext, D
             return {
                 success: true,
                 editedFiles: response.editedFile,
-                // errorsFixed: response.errors.
             }
         }
         else if(response.action === 'abort'){

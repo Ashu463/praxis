@@ -16,12 +16,6 @@ export class WorktreeGit {
         if (check.content.includes('no')) {
             await sandbox.Execute(sandbox.sandboxId, { action: 'runCommand', command: `git init -q` })
         }
-        // Identity must live on the repo, not just be passed inline to the
-        // worktree commits: `git merge` creates its own merge commit (and the
-        // conflict-resolution path commits too), neither of which carries a -c
-        // flag, so without repo-level identity a non-fast-forward merge fails
-        // with "Committer identity unknown" — which then surfaces as a bogus
-        // "merge conflict". Idempotent, so safe to run on an existing repo too.
         await sandbox.Execute(sandbox.sandboxId, {
             action: 'runCommand',
             command: `git -C ${PROJECT_ROOT} config user.email agent@lovable.dev && git -C ${PROJECT_ROOT} config user.name lovable-agent`,
@@ -90,10 +84,6 @@ export class WorktreeGit {
         })
         const files = diff.content.split('\n').map(f => f.trim()).filter(Boolean)
 
-        // Identity is passed inline (as well as being set on the repo by
-        // ensureRepo) so a non-fast-forward merge can always author its merge
-        // commit even if repo config is somehow missing — the exact failure
-        // that used to surface as a bogus "merge conflict".
         const merge = await sandbox.Execute(sandbox.sandboxId, {
             action: 'runCommand',
             command: `git -c user.email=agent@lovable.dev -c user.name=lovable-agent -C ${PROJECT_ROOT} merge --no-edit task-${taskId}`,
@@ -126,11 +116,7 @@ export class WorktreeGit {
             .map(l => ({ code: l.slice(0, 2), file: l.slice(3) }))
             .filter(l => UNMERGED_CODES.includes(l.code))
 
-        // No unmerged paths at all means the merge failed for some other
-        // reason (disk/permissions/corrupted git state) — not a conflict.
-        // TODO: out of scope for now, just abort with the raw error. Worth
-        // revisiting if this turns out to be common in practice (retry, or
-        // a diagnostic LLM call to interpret the git error itself).
+        // TODO: out of scope for now, just abort with the raw error.
         if (conflicts.length === 0) {
             return await this.abort(sandbox, mergeFailureOutput)
         }

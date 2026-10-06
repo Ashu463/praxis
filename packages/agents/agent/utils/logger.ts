@@ -6,7 +6,7 @@ export const logger = pino(
     level: process.env.LOG_LEVEL || "trace",
   },
   pretty({
-    colorize: false, // no ANSI colors in log files
+    colorize: false,
     translateTime: "SYS:standard",
     ignore: "pid,hostname",
   })

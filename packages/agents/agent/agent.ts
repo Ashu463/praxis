@@ -1,15 +1,15 @@
 import type { Screen } from "@google/stitch-sdk"
 import { b, type Abort, type Apify, type Context7, type DeleteFile, type Done, type EditFile, type GetSkill, type Message, type ReadFile, type RunCommand, type StitchTool, type Tavily, type WriteFile } from "../baml_client"
-import type { AgentResponse, SSEBody } from "../types/agentTypes"
+import type { AgentResponse } from "../types/agentTypes"
 import { COMPACT_CONTEXT_PROMPT, AGENT_SUMMARY_PROMPT, SUMMARIZE_CONTEXT_PROMPT } from "./config/systemPrompts"
 import { prompt } from "./config/promptProfile"
-import { COMPACT_THRESHOLD, COMPACTION_PARAMETER, AGENT_MAX_ITERATIONS, AGENT_LLM_RETRY_ATTEMPTS, SUBAGENT_RETRY_BACKOFF_MS, PROJECT_ROOT, SANDBOX_HOME } from "./config/systemConfig"
+import { COMPACT_THRESHOLD, AGENT_MAX_ITERATIONS, AGENT_LLM_RETRY_ATTEMPTS, SUBAGENT_RETRY_BACKOFF_MS, PROJECT_ROOT, SANDBOX_HOME } from "./config/systemConfig"
 import { webScrape } from "./MCPs/apify"
 import { fetchDocs } from "./MCPs/context7"
 import { webSearch } from "./MCPs/tavily"
 import { makeOneScreen } from "./tools/stitch"
 import { encoding_for_model } from "tiktoken"
-import { R2 } from "./services/file-storage/fileStorage"
+import { R2 } from "./services/fileStorage"
 
 import { E2BSandbox } from "./utils/sandbox"
 import { createRunEmitter, type EventEmitter } from "./events"
@@ -445,6 +445,8 @@ export class Agent{
     }
 
 }
+
+// --------------Brainstorming-----------------------
 
 /* Discussion
         - frame prompt

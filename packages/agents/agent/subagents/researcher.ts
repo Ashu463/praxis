@@ -7,7 +7,7 @@ import { logger } from "../utils/logger";
 import { startActiveObservation } from "@langfuse/tracing";
 
 /*
-what I'm thinking is that this researcher agent would use some RAG/memory things
+#TODO: @Ashu463 what I'm thinking is that this researcher agent would use some RAG/memory things
 in future which will probably be done in future. That's why I put different function
 and class here else it doesn't make sense at all.
 */
@@ -17,8 +17,6 @@ type ResearcherResult = string
 export class Researcher extends BaseAgent<ResearcherInput, ResearcherContext, ResearcherResponse, ResearcherResult>{
     
     constructor(
-        // public query: string,
-        // public searchTechnique: "webSearch" | "webScrape",
         userId: string, 
         projectId: string,
         sandbox: E2BSandbox

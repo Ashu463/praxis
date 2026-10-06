@@ -57,10 +57,6 @@ export class SubAgent<T extends keyof ContextMap> {
     private createContextManager(){
         switch(this.agentType){
             case 'coder': return new CoderContextManager() as any
-            // uiExpert shares CoderContext (same buildToolLoopContext), so it
-            // needs the same manager — without one, ManageContext never appends
-            // tool results to recentTurns and the loop re-reads the same file
-            // every iteration until it hits the cap.
             case 'uiExpert': return new CoderContextManager() as any
             case 'debuggerr': return new DebuggerContextManager() as any
             default: return undefined
@@ -314,9 +310,8 @@ export class SubAgent<T extends keyof ContextMap> {
 
     async BuildSummary(): Promise<string> {
         try {
-            // #CRITICAL: See session map of baml side and here agent side are not imported from same direction
-            // so might cause some issue here.
-            // Fix for it is store stringified version of whatever thing you want to save
+            // #CRITICAL: See session map of baml side and here agent side are not imported from same direction so might cause some issue here.
+            // #FIX: for it is store stringified version of whatever thing you want to save
             return await observeBaml(
                 "GenerateSubagentSummary",
                 { agentType: this.agentType, sessionLength: this.session.length },
@@ -328,17 +323,7 @@ export class SubAgent<T extends keyof ContextMap> {
         }
     }
 
-    // const totalTokens = this.estimateTokens(this.context)
-    // if (totalTokens <= COMPACT_THRESHOLD) return this.context
-    
-    // const compactedContext = await this.contextManager.CompactContext(this.context)
-    // const compactedTokens = this.estimateTokens(compactedContext)
-    // if (compactedTokens <= COMPACT_THRESHOLD) return compactedContext
-
-    // return await this.contextManager.SummarizeContext(compactedContext)
-
     async ManageContext(res: any, toolRes: any): Promise<ContextMap[T]> {
-        // which is not needed for tester, uiexpert, researcher.
         if(!this.contextManager) return this.context
 
         const updated = this.contextManager.appendTurn(this.context, res, toolRes)
@@ -353,7 +338,7 @@ export class SubAgent<T extends keyof ContextMap> {
     }
     estimateTokens(context: ContextMap[T]): number{
         const encoder = encoding_for_model("gpt-4o")
-        // BUG: stringifying it would skip the undefined fields present in context.
+        // #BUG: stringifying it would skip the undefined fields present in context.
         const num: number = encoder.encode(JSON.stringify(context)).length
         encoder.free()
         return num

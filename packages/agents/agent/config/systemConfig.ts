@@ -3,29 +3,17 @@ export const SANDBOX_HOME = '/home/user'
 export const PROJECT_ROOT = `${SANDBOX_HOME}/app`
 export const MAX_BOOT_WAIT_MS = 60000
 export const POLL_INTERVAL_MS = 500
-// react-template's `dev` script is a bare `vite`, whose own default port is
-// 5173 — this just names that default, it doesn't force a different one.
+// for boot loader, right after successful building of the app
 export const PREVIEW_PORT = 5173
-// The tester boots its own `npm run dev` purely to check the app comes up, then
-// kills it — but it used to do that on PREVIEW_PORT, the same port GetPreviewUrl
-// serves the user's live app from. Both also use --strictPort (no fallback) and
-// GetPreviewUrl unconditionally `pkill -f vite`, so the two raced: whichever ran
-// second killed the other's server, and GetPreviewUrl's await then rejected with
-// "signal: terminated", throwing away a fully successful run at the final step
-// (observed 2026-09-20: all 6 tasks done, build green, no preview, no
-// run_completed). Giving the tester its own port removes the contention.
+// for tester, to avoid port conflict. 
 export const TESTER_PREVIEW_PORT = 5174
-// GetPreviewUrl is the last step before a human sees anything and nothing
-// upstream retries it, so one transient failure discards an entire successful
-// run. Retry it rather than throwing on the first blip.
+
 export const PREVIEW_START_ATTEMPTS = 2
 export const BACKEND_URL = process.env.BACKEND_URL ?? `http://localhost:3000`
 export const REDIS_HOST = process.env.REDIS_HOST ?? "redis"
 export const REDIS_PORT = Number(process.env.REDIS_PORT ?? 6380)
 export const AGENT_MAX_ITERATIONS = 25
-// Must stay under the *model's* window, not a hypothetical one — at 200k with
-// gpt-4o-mini (128k) the threshold sat above the hard limit, so compaction never
-// fired and the API rejected the call instead. Raise this when the model changes.
+
 export const MAX_CONTEXT_WINDOW_LENGTH = 1_28_000
 export const COMPACTION_PARAMETER = 10
 export const COMPACT_THRESHOLD = 0.8*MAX_CONTEXT_WINDOW_LENGTH
@@ -35,29 +23,16 @@ export const DEBUGGERR_MAX_ITERATIONS = 10
 // loop breaks on the first pass and these caps never actually bind.
 export const RESEARCHER_MAX_ITERATIONS = 1
 export const TESTER_MAX_ITERATIONS = 1
-// UIExpert runs a real tool loop (translate design -> write component -> wire
-// into App.tsx -> verify build). The floor of real actions is ~5 (read design,
-// write tsx, write css, wire App.tsx, build) and a fix pass or two on top, so
-// 8 left no room once any turn went to exploration — runs capped out mid-build.
+// I capped Iterations for each agent
 export const UI_EXPERT_MAX_ITERATIONS = 14
-// Each pass costs a full tester boot-wait plus a whole debugger run, and the
-// error-signature halt already catches a stuck debugger after 2 repeats.
 export const TESTER_DEBUGGER_LOOP_MAX_ITERATIONS = 3
-// Hard ceiling on LLM calls per run — the per-agent caps above bound one agent,
-// not the whole run, so a complex DAG can still multiply them out. This is the
-// money guard; raise it once runs are trustworthy.
 export const RUN_MAX_LLM_CALLS = 120
 export const RECENT_TURNS_LIMIT = 50
 export const TOOL_RESULT_MAX_CHARS = 2000
-// only for READ tool
-// Raised from 12000 -> 15000 (2026-09-20): store.tsx was 12,155 bytes, just over
-// the old limit, so every read of it silently omitted its middle section. Edits
-// built from that truncated view kept missing (oldString not found) because the
-// real file had the omitted chunk restored — task 5 spent 48 calls and ~1.47M
-// input tokens across two attempts largely fighting this one file. 15000 clears
-// that case with margin without jumping straight to 20000.
+// only for READ tool, so that context window gets feed properly to the agents.
 export const READ_RESULT_MAX_CHARS = 15000
 export const WRITE_ECHO_MAX_CHARS = 800
+// files/dirs prohibited by sandbox <-> R2 sync.
 export const REPO_TREE_PRUNE_DIRS = [
     'node_modules', '.git', 'dist', 'build', '.next', '.turbo',
     'coverage', '.cache', '.vite', '.output', 'vendor'
@@ -71,13 +46,10 @@ export const TASK_SANDBOX_RETRY_LIMIT = 5
 export const SUBAGENT_LLM_RETRY_ATTEMPTS = 5
 export const SUBAGENT_TOOL_RETRY_ATTEMPTS = 2
 export const SUBAGENT_RETRY_BACKOFF_MS = 3000
-// A whole subagent run failing (max iterations, explicit abort, or haltTask
-// after its own LLM/tool retries are exhausted) is a different failure mode
-// than a transient LLM/tool blip — retried at the orchestrator level, with a
-// fresh SubAgent instance per attempt, not inside SubAgent.withRetry.
+// subagents max retry
 export const SUBAGENT_TASK_RETRY_ATTEMPTS = 2
 export const AGENT_LLM_RETRY_ATTEMPTS = 5
-// A 429 needs to wait out a window, not the ~1s a transient failure needs.
+// A 429 needs to wait out a window, not the ~1s a transient failure needs. Occurred with GPT a lot that's made a dedicated temporary hold.
 export const RATE_LIMIT_BACKOFF_MS = 20_000
 export const RETRY_MAX_BACKOFF_MS = 60_000
 

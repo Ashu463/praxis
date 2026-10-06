@@ -7,9 +7,6 @@ export type CallAgentEvent = AgentEvents |
     { type: "call_agent_started"; }
     | { type: "clarification_needed"; questions: Question[] }
     | { type: "designs_generating"; count: number }
-    // Complex-path design pre-phase progress. Unlike designs_generating (the
-    // simple-path variant picker, which pauses for selection), this is a plain
-    // transient line — the complex path never pauses to pick a design.
     | { type: "design_progress"; message: string }
     | { type: "select_design"; designs: DesignOption[] }
     | { type: "ui_preference_needed"; questions: UIPreferenceQuestion[] }
@@ -28,8 +25,7 @@ export interface EventEmitter {
   emit(event: CallAgentEvent): Promise<void>;
 }
 
-// Every call the agent/worker package makes back to the backend is a
-// service-to-service call, not a user request — this is what authenticates it.
+// authentication for agent/worker backend calls.
 export function internalAuthHeader(): Record<string, string>{
     return { Authorization: `Bearer ${process.env.INTERNAL_SERVICE_TOKEN}` }
 }

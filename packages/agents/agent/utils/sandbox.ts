@@ -1,6 +1,6 @@
 import { CommandExitError, Sandbox, SandboxNotFoundError } from 'e2b'
 import type { DeleteFile, EditFile, ReadFile, RunCommand, WriteFile } from '../../baml_client';
-import { R2 } from '../services/file-storage/fileStorage';
+import { R2 } from '../services/fileStorage';
 import { SANDBOX_HOME, PROJECT_ROOT, RUN_COMMAND_TIMEOUT_MS, SANDBOX_TIMEOUT_MS, PREVIEW_PORT, PREVIEW_START_ATTEMPTS, MAX_BOOT_WAIT_MS, POLL_INTERVAL_MS, SANDBOX_KEEPALIVE_INTERVAL_MS, REPO_TREE_PRUNE_DIRS, REPO_TREE_MAX_ENTRIES, SYNC_R2_TIMEOUT_MS } from '../config/systemConfig';
 import { logger } from './logger';
 import { applyEdits } from '../tools/edit';
@@ -39,17 +39,7 @@ export class E2BSandbox{
         await sandbox.setTimeout(SANDBOX_TIMEOUT_MS)
         return sandbox
     }
-    // Keyed by (userId, projectId): every StartSandbox call for the same
-    // project reconnects to the same underlying E2B sandbox and restores the
-    // exact same R2 files into the exact same PROJECT_ROOT — a parallel level
-    // calls this once for itself plus once per task (Orchestrator.runLevel),
-    // so a 3-task level fired 4 independent restores of the same file set.
-    // The in-flight PROMISE is cached, not a "restored N seconds ago"
-    // timestamp — callers in the same Promise.all fire near-simultaneously,
-    // so a timestamp check would still let all of them race past it before
-    // any one finished. Callers still each get their own E2BSandbox instance
-    // (safe for concurrent independent use, e.g. separate worktrees); only
-    // the restore's R2 round-trips are deduplicated.
+
     private static restoreInFlight = new Map<string, Promise<void>>()
 
     private static knownGoodSandboxIds = new Set<string>()
@@ -80,9 +70,6 @@ export class E2BSandbox{
         if (!restore) {
             restore = instance.restoreOrBootstrap()
             E2BSandbox.restoreInFlight.set(key, restore)
-            // Only the entry THIS call created should be cleared, and only
-            // once it settles — a slower restore finishing after a newer one
-            // started would otherwise clear the newer (still in-flight) entry.
             restore.finally(() => {
                 if (E2BSandbox.restoreInFlight.get(key) === restore) {
                     E2BSandbox.restoreInFlight.delete(key)
@@ -394,10 +381,7 @@ export class E2BSandbox{
         }
     }
 
-    // Probes with the public E2B hostname in the Host header, which is what the
-    // browser's iframe actually sends. Probing plain localhost is misleading:
-    // vite always allows localhost, so it answers 200 even while rejecting the
-    // proxied host with a 403. Returns '000' when nothing is listening.
+    // Probes with the public E2B hostname in the Host header
     private async probePreviewStatus(): Promise<string>{
         const probe = await this.sandbox.commands.run(
             `curl -s -o /dev/null -w '%{http_code}' -H 'Host: ${this.sandbox.getHost(PREVIEW_PORT)}' http://localhost:${PREVIEW_PORT} || true`,
@@ -406,31 +390,13 @@ export class E2BSandbox{
         return probe.stdout.trim()
     }
 
-    // This is the last step before a human sees anything: every task can have
-    // succeeded and the build passed, and a single transient failure here still
-    // leaves the user with no app and the run unfinalized (observed 2026-09-20 —
-    // a port race with the tester killed the server mid-boot, GetPreviewUrl threw
-    // "signal: terminated", and ~20 minutes of green work surfaced as nothing).
-    // Unlike the agents' own work, nothing upstream retries this, so it retries
-    // itself rather than discarding a whole successful run on one blip.
+    // This is the last step before a end user sees anything
     async GetPreviewUrl(): Promise<string>{
         const url = `https://${this.sandbox.getHost(PREVIEW_PORT)}`
         let lastError: unknown
         for (let attempt = 1; attempt <= PREVIEW_START_ATTEMPTS; attempt++) {
             try{
-                // Clear any dev server still holding the port before binding it: a
-                // previous run's, or a tester orphan (`npm run dev` spawns vite as a
-                // CHILD, so killing the command leaves vite alive on the port).
-                //
-                // The pattern is bracketed on purpose. `[v]ite` is a regex matching
-                // the string "vite", but this command's own command line literally
-                // contains "[v]ite", which that regex does NOT match — so pkill
-                // cannot kill the shell running it. A plain `pkill -f vite` DOES
-                // match its own shell and SIGTERMs itself; `|| true` can't rescue
-                // that because the shell is killed, not merely exiting non-zero.
-                // It surfaced as "signal: terminated" thrown from this function,
-                // which broke run finalization AND every project load (project.ts
-                // calls GetPreviewUrl too) — sandbox healthy, app never appearing.
+                // clear any previsou dev server
                 await this.sandbox.commands.run(`pkill -f '[v]ite' 2>/dev/null || true`, { cwd: PROJECT_ROOT })
 
                 // Let the OS release the port before --strictPort tries to bind it;
@@ -466,7 +432,7 @@ export class E2BSandbox{
     }
 }
 
-/* -------------Discussion-------------------
+/* -------------Brainstorming-------------------
 
 Steps/flow I thought for sandboxes
 Case - 1: Starting a new project from very scratch. 

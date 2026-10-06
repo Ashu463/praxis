@@ -103,24 +103,15 @@ export class Orchestrator {
         }
     }
 
-    // TODO (context engine) — pure interface stub. The engine doesn't exist
-    // as code yet; wire this up to it directly (subagents call it too, not
-    // just the orchestrator — see the earlier discussion on pull-based
-    // context).
+    // TODO (context engine) — pure interface stub.
     // private async pushToContextEngine(): Promise<void> {
     //     logger.warn(`[orchestrator] pushToContextEngine is a stub — ${this.context.length} summar(ies) for run ${this.runId} were not ingested`)
     // }
 
-    // TODO (replan decision) — deterministic stub, no LLM call yet. Needs a
-    // new BAML function once you're ready to add it, roughly:
-    //
-    //   function DecideRunContinuation(systemPrompt: string, completedLevel: ...,
+    // TODO (replan decision) — deterministic stub, 
+    // private function DecideRunContinuation(systemPrompt: string, completedLevel: ...,
     //     remainingTodos: PlannerTodo[], context: string) -> Continue | Replan | Abort
-    //
-    // Always returns Continue for now, which makes this loop behave exactly
-    // like the old sequential DAG walk (minus the actual parallelism, see
-    // above) — that's intentional so the rest of the flow is testable before
-    // this exists.
+
     private async decideNextStep(_levelResults: { success: boolean }[], _remaining: PlannerTodo[]): Promise<RunDecision> {
         return { action: 'continue' }
     }
@@ -245,9 +236,6 @@ export class Orchestrator {
         const runBuild = async (sandbox: E2BSandbox): Promise<{ ok: boolean, error?: AgentError }> => {
             const buildResult = await sandbox.Execute(sandbox.sandboxId, { action: 'runCommand', command: 'npm run build' })
             if (!buildResult.success) {
-                // content is stdout+stderr combined; tsc/vite write errors to
-                // stdout, so reading stderr alone left the debugger with an
-                // empty "BUILD_CHECKER_ERROR: " and nothing to localize.
                 return { ok: false, error: { fileName: "BUILD_CHECKER_ERROR", error: buildResult.content || buildResult.stderr || "Unknown build error", source: 'build' } }
             }
             return { ok: true }
@@ -264,12 +252,6 @@ export class Orchestrator {
 
         return startActiveObservation("multi-agent-runMergeGate", async (span) => {
             let deployReady = false
-            // Two sequential gates, in order: compile, THEN runtime. The build is
-            // the cheap compile check; the tester boots `npm run dev` and is the
-            // runtime check — which only means anything once the code compiles, so
-            // it runs after a green build (not, as before, only when the build had
-            // already failed). Whichever gate fails feeds the Debugger; the loop
-            // exits only when both are green.
             while (loopCount < TESTER_DEBUGGER_LOOP_MAX_ITERATIONS && !deployReady) {
                 sandbox = await this.reconnectSandbox()
                 startObservation(
@@ -418,6 +400,8 @@ export class Orchestrator {
         return { status: 'completed', summary, title, todos: this.todos }
     }
 }
+
+// --------------Brainstorming-----------------------
 
 /*Ideas
 
