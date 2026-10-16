@@ -1,4 +1,4 @@
-import { Screen, StitchError, stitch } from "@google/stitch-sdk";
+import { Screen, StitchError, Stitch, StitchToolClient } from "@google/stitch-sdk";
 import { logger } from "../utils/logger";
 
 type CreateProjectResult = {
@@ -10,11 +10,13 @@ type CreateProjectResult = {
 };
 
 export async function makeOneScreen(prompt: string, userId: string): Promise<Screen> {
+    const client = new StitchToolClient()
+    const stitch = new Stitch(client)
 
     let projectResult: CreateProjectResult | undefined;
     for (let attempt = 1; attempt <= 3; attempt++) {
         try {
-            projectResult = await stitch.callTool("create_project", { title: userId });
+            projectResult = await client.callTool("create_project", { title: userId });
             break;
         } catch (e) {
             if (attempt === 3) throw e;
@@ -67,6 +69,11 @@ export async function fetchDesignHtml(screen: Screen): Promise<string> {
 export async function generateScreenHtml(prompt: string, userId: string): Promise<string> {
     const screen = await makeOneScreen(prompt, userId);
     return fetchDesignHtml(screen);
+}
+
+export function extractFontLinks(html: string): string[] {
+    const links = html.match(/<link[^>]*href=["']https:\/\/fonts\.googleapis\.com\/css2[^"']*["'][^>]*>/gi) ?? [];
+    return [...new Set(links.filter((l) => !/Material(\+|%20| )Symbols/i.test(l)))];
 }
 
 export function extractTailwindConfig(html: string): string | null {

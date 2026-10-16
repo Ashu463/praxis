@@ -5,7 +5,7 @@ import { backendGql } from "./backendClient"
 import { createRunEmitter, type EventEmitter } from "../events"
 import { startActiveObservation, startObservation } from "@langfuse/tracing"
 import { observeBaml, runSpanContext } from "./tracing"
-import { generateScreenHtml, extractTailwindConfig } from "../tools/stitch"
+import { generateScreenHtml, extractTailwindConfig, extractFontLinks } from "../tools/stitch"
 import { designRefPath } from "./designPath"
 import { E2BSandbox } from "./sandbox"
 import { PROJECT_ROOT, STITCH_DESIGN_CONCURRENCY, STITCH_DESIGN_RETRY_ATTEMPTS, STITCH_DESIGN_BACKOFF_MS } from "../config/systemConfig"
@@ -23,15 +23,15 @@ export class Planner {
         this.emitter = createRunEmitter(runId)
     }
 
-    async enumerateScreens(request: string, context: string): Promise<PlannedScreen[]> {
+    async enumerateScreens(request: string, context: string, visualDirection: string): Promise<PlannedScreen[]> {
         return startActiveObservation(
             "enumerate-screens",
             async (span): Promise<PlannedScreen[]> => {
-                span.update({ input: { request } })
+                span.update({ input: { request, visualDirection } })
                 const screens = await observeBaml(
                     "EnumerateScreens",
                     { request },
-                    (opts) => b.EnumerateScreens(ENUMERATE_SCREENS_PROMPT, request, context, opts),
+                    (opts) => b.EnumerateScreens(ENUMERATE_SCREENS_PROMPT, request, context, visualDirection, opts),
                 )
                 span.update({ output: screens })
                 return screens
@@ -68,7 +68,7 @@ export class Planner {
         ).catch(e => logger.error(`Failed to save todos for run ${this.runId}: ${e}`))
     }
 
-    async generateDesigns(screens: PlannedScreen[], sandbox: E2BSandbox): Promise<DesignResult[]> {
+    async generateDesigns(screens: PlannedScreen[], sandbox: E2BSandbox, visualDirection: string): Promise<DesignResult[]> {
         return startActiveObservation(
             "generate-designs",
             async (span): Promise<DesignResult[]> => {
@@ -77,6 +77,7 @@ export class Planner {
                 const results: DesignResult[] = []
 
                 let capturedConfig: string | null = null
+                let capturedFontLinks: string[] = []
 
                 for (let i = 0; i < screens.length; i += STITCH_DESIGN_CONCURRENCY) {
                     const chunk = screens.slice(i, i + STITCH_DESIGN_CONCURRENCY)
@@ -93,10 +94,16 @@ export class Planner {
 
                             for (let attempt = 1; attempt <= STITCH_DESIGN_RETRY_ATTEMPTS; attempt++) {
                                 try {
-                                    const html = await generateScreenHtml(screen.designBrief, this.userId)
+                                    const stitchPrompt = visualDirection
+                                        ? `${screen.designBrief}\n\nVisual direction — apply it exactly, to the whole screen (fonts, colors, corner roundness, mood):\n${visualDirection}\nBuild it with Tailwind CSS and load the chosen font(s) from Google Fonts.\nDo not use any photographs or generated images, and no <img> tags: use icons, initials-in-a-circle avatars, gradients and CSS-drawn decoration instead.`
+                                        : screen.designBrief
+                                    const html = await generateScreenHtml(stitchPrompt, this.userId)
                                     if (!capturedConfig) {
                                         const extracted = extractTailwindConfig(html)
-                                        if (extracted) capturedConfig = extracted
+                                        if (extracted) {
+                                            capturedConfig = extracted
+                                            capturedFontLinks = extractFontLinks(html)
+                                        }
                                     }
                                     const writeRes = await sandbox.Execute(sandbox.sandboxId, { action: 'writeFile', path, content: html }, PROJECT_ROOT)
                                     if (!writeRes.success) throw new Error(`design write failed: ${writeRes.content}`)
@@ -122,7 +129,7 @@ export class Planner {
 
                 if (results.some((r) => r.status === 'generated')) {
                     if (capturedConfig) {
-                        await this.injectTailwindConfig(sandbox, capturedConfig)
+                        await this.injectDesignTheme(sandbox, capturedConfig, capturedFontLinks)
                     }
                     await sandbox.SyncR2().catch((e) => logger.error(`Failed to sync designs to R2: ${e}`))
                     startObservation("designs-synced", { input: { count: results.filter((r) => r.status === 'generated').length } }, { asType: "event" }).end()
@@ -139,16 +146,11 @@ export class Planner {
         )
     }
 
-    // Writes the harvested config into the project's real index.html, right
-    // after the Tailwind CDN script tag (config must load after the CDN
-    // script defines `tailwind`, or the assignment has nothing to attach to).
-    // Idempotent — a project that already has one (this run's earlier screen,
-    // or a prior run) is left alone rather than overwritten.
-    private async injectTailwindConfig(sandbox: E2BSandbox, config: string): Promise<void> {
+    private async injectDesignTheme(sandbox: E2BSandbox, config: string, fontLinks: string[]): Promise<void> {
         const indexPath = 'index.html'
         const current = await sandbox.Execute(sandbox.sandboxId, { action: 'read', path: indexPath }, PROJECT_ROOT)
         if (!current.success) {
-            logger.error(`Failed to read index.html to inject Tailwind config: ${current.content}`)
+            logger.error(`Failed to read index.html to inject design theme: ${current.content}`)
             return
         }
         if (current.content.includes('id="tailwind-config"') || current.content.includes("id='tailwind-config'")) {
@@ -156,16 +158,17 @@ export class Planner {
         }
 
         const scriptTag = `<script id="tailwind-config">\n    ${config}\n  </script>`
+        const injected = [...fontLinks, scriptTag].join('\n    ')
         const cdnMarker = /<script[^>]*src=["']https:\/\/cdn\.tailwindcss\.com[^"']*["'][^>]*>\s*<\/script>/i
         const updated = cdnMarker.test(current.content)
-            ? current.content.replace(cdnMarker, (m) => `${m}\n    ${scriptTag}`)
-            : current.content.replace('</head>', `    ${scriptTag}\n  </head>`)
+            ? current.content.replace(cdnMarker, (m) => `${m}\n    ${injected}`)
+            : current.content.replace('</head>', `    ${injected}\n  </head>`)
 
         const writeRes = await sandbox.Execute(sandbox.sandboxId, { action: 'writeFile', path: indexPath, content: updated }, PROJECT_ROOT)
         if (!writeRes.success) {
-            logger.error(`Failed to write index.html with injected Tailwind config: ${writeRes.content}`)
+            logger.error(`Failed to write index.html with injected design theme: ${writeRes.content}`)
             return
         }
-        logger.info('Injected harvested Tailwind config into index.html')
+        logger.info(`Injected harvested Tailwind config and ${fontLinks.length} font link(s) into index.html`)
     }
 }

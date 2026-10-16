@@ -12,7 +12,7 @@ class PlannedScreen {
   designBrief string
 }
 
-function EnumerateScreens(systemPrompt: string, userPrompt: string, context: string) -> PlannedScreen[]{
+function EnumerateScreens(systemPrompt: string, userPrompt: string, context: string, visualDirection: string) -> PlannedScreen[]{
     // Direct deepseek, not OpenRouter — see PlanTasks below for why.
     client OpenAI
     prompt #"
@@ -21,6 +21,9 @@ function EnumerateScreens(systemPrompt: string, userPrompt: string, context: str
         {{context}} - current app state and prior decisions, including any
   screens that already have designs from earlier runs (don't re-enumerate
   those as new).
+        {{visualDirection}} - the project's chosen mood, typography, corner
+  style and color palette as question/answer pairs; empty if the user
+  hasn't chosen any.
 
         {{ctx.output_format}}
     "#

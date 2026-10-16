@@ -329,7 +329,7 @@ const INFO: Record<string, Info> = {
     visual: <R2Sync />,
     links: [
       src("packages/agents/agent/utils/sandbox.ts", 351),
-      src("packages/agents/agent/services/file-storage/fileStorage.ts", 52),
+      src("packages/agents/agent/services/fileStorage.ts", 52),
     ],
   },
 };

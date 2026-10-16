@@ -658,7 +658,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
             }
             
         async EnumerateScreens(
-        systemPrompt: string,userPrompt: string,context: string,
+        systemPrompt: string,userPrompt: string,context: string,visualDirection: string,
         __baml_options__?: BamlCallOptions<never>
         ): Promise<types.PlannedScreen[]> {
           try {
@@ -672,7 +672,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
           // Check if onTick is provided - route through streaming if so
           if (__options__.onTick) {
           const __stream__ = this.stream.EnumerateScreens(
-          systemPrompt,userPrompt,context,
+          systemPrompt,userPrompt,context,visualDirection,
           __baml_options__
           );
 
@@ -696,7 +696,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
             const __raw__ = await this.runtime.callFunction(
             "EnumerateScreens",
             {
-            "systemPrompt": systemPrompt,"userPrompt": userPrompt,"context": context
+            "systemPrompt": systemPrompt,"userPrompt": userPrompt,"context": context,"visualDirection": visualDirection
             },
             this.ctxManager.cloneContext(),
             __options__.tb?.__tb(),
@@ -2308,7 +2308,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
                   }
                   
             EnumerateScreens(
-            systemPrompt: string,userPrompt: string,context: string,
+            systemPrompt: string,userPrompt: string,context: string,visualDirection: string,
             __baml_options__?: BamlCallOptions<never>
             ): BamlStream<partial_types.PlannedScreen[], types.PlannedScreen[]>
               {
@@ -2357,7 +2357,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
                 const __raw__ = this.runtime.streamFunction(
                 "EnumerateScreens",
                 {
-                "systemPrompt": systemPrompt,"userPrompt": userPrompt,"context": context
+                "systemPrompt": systemPrompt,"userPrompt": userPrompt,"context": context,"visualDirection": visualDirection
                 },
                 undefined,
                 this.ctxManager.cloneContext(),

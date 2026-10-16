@@ -373,7 +373,7 @@ env?: Record<string, string | undefined>
       }
       
   async EnumerateScreens(
-  systemPrompt: string,userPrompt: string,context: string,
+  systemPrompt: string,userPrompt: string,context: string,visualDirection: string,
   __baml_options__?: BamlCallOptions<never>
   ): Promise<HTTPRequest> {
     try {
@@ -392,7 +392,7 @@ env?: Record<string, string | undefined>
       return await this.runtime.buildRequest(
       "EnumerateScreens",
       {
-      "systemPrompt": systemPrompt,"userPrompt": userPrompt,"context": context
+      "systemPrompt": systemPrompt,"userPrompt": userPrompt,"context": context,"visualDirection": visualDirection
       },
       this.ctxManager.cloneContext(),
       __baml_options__?.tb?.__tb(),
@@ -1237,7 +1237,7 @@ env?: Record<string, string | undefined>
           }
           
       async EnumerateScreens(
-      systemPrompt: string,userPrompt: string,context: string,
+      systemPrompt: string,userPrompt: string,context: string,visualDirection: string,
       __baml_options__?: BamlCallOptions<never>
       ): Promise<HTTPRequest> {
         try {
@@ -1256,7 +1256,7 @@ env?: Record<string, string | undefined>
           return await this.runtime.buildRequest(
           "EnumerateScreens",
           {
-          "systemPrompt": systemPrompt,"userPrompt": userPrompt,"context": context
+          "systemPrompt": systemPrompt,"userPrompt": userPrompt,"context": context,"visualDirection": visualDirection
           },
           this.ctxManager.cloneContext(),
           __baml_options__?.tb?.__tb(),

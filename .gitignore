@@ -43,3 +43,7 @@ yarn-error.log*
 demo*.html
 # runtime logs (dev-all.sh, worker output)
 logs/
+22_aug.planner.node_modules
+Ashutosh_Resume.md
+test-results.md
+tester-fixing.md

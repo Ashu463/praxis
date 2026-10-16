@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowUp, ChevronDown, Home, Plus, Square } from "lucide-react";
+import { ArrowUp, ChevronDown, ExternalLink, Home, Plus, Square } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -260,7 +261,18 @@ function PreviewPane() {
           <TabsTrigger value="preview">Preview</TabsTrigger>
           <TabsTrigger value="code">Code</TabsTrigger>
         </TabsList>
-        <span className="font-mono text-[11px] text-muted-foreground">reads from R2</span>
+        <div className="flex items-center gap-3">
+          {/* The iframe is a small viewport, so layouts can look cramped there — a full tab shows the app at real size. */}
+          {state.result.previewUrl && (
+            <Button asChild variant="outline" size="sm">
+              <a href={state.result.previewUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open in new tab
+              </a>
+            </Button>
+          )}
+          <span className="font-mono text-[11px] text-muted-foreground">reads from R2</span>
+        </div>
       </div>
       <TabsContent value="preview" className="flex-1">
         {state.result.previewUrl ? (
@@ -327,13 +339,16 @@ export function Workspace() {
   const resuming = !isLive && resumeStatus !== "not_found";
   const notFound = !isLive && resumeStatus === "not_found";
 
+  // With the DAG above, chat + preview get a near-full-screen height of their own and the page scrolls, instead of squeezing into what the DAG leaves over.
+  const showDag = state.status === "running" || state.status === "completed";
+
   const isFailed = state.status === "failed";
   // A conversational reply is terminal, same as "completed" — just without a
   // build behind it, so it gets the same non-live/ok styling.
   const isDone = state.status === "completed" || state.status === "conversation";
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col overflow-y-auto">
       <StatusLine />
 
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
@@ -370,7 +385,7 @@ export function Workspace() {
 
       <PipelineStrip stages={stages} agents={agents} />
 
-      {(state.status === "running" || state.status === "completed") && (
+      {showDag && (
         <div className="px-4 py-2.5">
           <DagView
             projectId={state.projectId}
@@ -398,7 +413,7 @@ export function Workspace() {
           </Link>
         </div>
       ) : (
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className={cn("flex flex-1 flex-col overflow-hidden", showDag && "min-h-[calc(100vh-7rem)] shrink-0")}>
           {showSplit && (
             <div className="flex border-b border-border md:hidden">
               <button

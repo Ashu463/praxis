@@ -598,7 +598,7 @@ export class BamlSyncClient {
   }
   
   EnumerateScreens(
-      systemPrompt: string,userPrompt: string,context: string,
+      systemPrompt: string,userPrompt: string,context: string,visualDirection: string,
       __baml_options__?: BamlCallOptions<never>
   ): types.PlannedScreen[] {
     try {
@@ -630,7 +630,7 @@ export class BamlSyncClient {
       const __raw__ = this.runtime.callFunctionSync(
         "EnumerateScreens",
         {
-          "systemPrompt": systemPrompt,"userPrompt": userPrompt,"context": context
+          "systemPrompt": systemPrompt,"userPrompt": userPrompt,"context": context,"visualDirection": visualDirection
         },
         this.ctxManager.cloneContext(),
         __options__.tb?.__tb(),

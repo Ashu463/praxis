@@ -1137,35 +1137,67 @@ open-ended.
 export const UI_PREFERENCE_PROMPT = `
 # ROLE
 
-Decide whether this project's overall UI direction — color palette, mood,
-visual style, density — is genuinely undecided, and if so, ask about it.
+Decide whether this project's visual identity — mood, typography, color
+palette — is genuinely undecided, and if so, ask about exactly those.
 
 # GIVEN
 
 You run separately from CLARIFICATION_PROMPT and only once per project, not
 per message — the answers are saved project-wide and reused by every
 UIExpert task from then on, not folded back into this one request's prompt.
-Don't ask about an individual screen; these are project-wide preferences,
-never a per-screen decision.
+They also steer every screen's design, so they must be concrete enough to
+build from. Don't ask about an individual screen; these are project-wide
+preferences, never a per-screen decision.
+
+A good-looking UI comes down to four independent choices, and these are the
+only four axes you ever ask about:
+1. Mood — the product's personality (professional, playful, personal, ...).
+2. Typography — which kind of typeface.
+3. Corner style — how sharp or round buttons, cards and inputs are. After
+   color and font this is the biggest lever on how a UI feels.
+4. Color palette — which actual colors.
 
 # CRITERIA
 
-Only ask if the request plausibly introduces UI work and the visual
-direction is left open enough that two reasonable builds would look nothing
-alike. If the request already states a direction, or none is needed yet,
-return no questions at all.
+Only ask if the request plausibly introduces UI work. Skip any axis the
+request already settles (a "playful kids' app" has answered mood; a named
+brand color has answered palette), and return no questions at all if it
+settles all four.
 
-Ask at most 3, one per genuinely independent axis — palette and density are
-separate, but "dark or light" and "what accent color" are the same axis and
-should be merged. Every axis you leave unasked is one you're happy to pick a
-default for, so only spend a question where the answer really changes the
-build.
+Never ask light versus dark — that is a toggle the user can flip later, not
+a decision that shapes the build. Don't ask about spacing, density, layout,
+shadows or any individual component either; those get sensible defaults.
+
+Ask in this order, skipping any axis already settled: mood, typography,
+corner style, palette.
 
 # CONSTRAINTS
 
-Give 2-4 concrete answer choices per question, most sensible default first —
-same requirement as any other clarifying question, an unanswerable question
-stalls the run.
+Same answer-choice rules as any other question: 2-4 concrete, mutually
+exclusive options per question, most sensible default first — an
+unanswerable question stalls the run. The questions are shown together, so
+no option may depend on another question's answer.
+
+Make every option self-explanatory to someone who isn't a designer:
+- Mood: "<Mood> — <a few words on how it looks and feels>", e.g.
+  "Professional — clean, structured, data-forward".
+- Typography: "<Style> (<two example typefaces>)", e.g. "Modern sans-serif
+  (Inter, DM Sans)". Offer clearly different families — sans-serif, serif,
+  rounded, and where they plausibly fit the product, handwritten or
+  monospace — and prefer widely available Google Fonts such as Inter, Geist,
+  DM Sans, Manrope, Plus Jakarta Sans, Nunito Sans, Lexend, Space Grotesk,
+  IBM Plex Sans, Newsreader, Source Serif, EB Garamond, and for handwritten
+  Caveat, Patrick Hand, Kalam.
+- Corner style: "<Style> (<radius>) — <a few words on the feel>", e.g.
+  "Softly rounded (8px) — friendly but still professional". Offer clearly
+  different steps from sharp (2-4px) through softly rounded (8px) and very
+  rounded (12-16px) to fully pill-shaped.
+- Color palette: "<Palette name> — #hex, #hex, #hex" with exactly three hex
+  codes (primary, secondary or neutral, accent). The hex codes are required:
+  they let the choice be built from exact colors and shown as swatches.
+  Make the palettes genuinely distinct from each other (say one cool, one
+  warm, one neutral, one vibrant) and suited to what the product is — not
+  four shades of the same blue.
 `;
 
 // ============================================================================
@@ -1344,11 +1376,29 @@ reused id later.
 # CRITERIA
 
 Emit one PlannedScreen per screen: a stable id, a short name, and a
-designBrief describing what the screen contains. One entry per genuinely
-distinct screen — don't fragment a single screen, and don't invent screens
-the request doesn't imply. Enumerate only the core screens a first iteration
-actually needs to work end to end — the primary surfaces the user would
-click through — not every screen the full product could eventually have.
+designBrief. One entry per genuinely distinct screen — don't fragment a
+single screen, and don't invent screens the request doesn't imply. Enumerate
+only the core screens a first iteration actually needs to work end to end —
+the primary surfaces the user would click through — not every screen the
+full product could eventually have.
+
+The designBrief is the only thing a designer sees, and it is a design
+brief, not a feature list. In 3-5 sentences cover: the layout (which regions
+the screen has — header, sidebar, main area, side panel — and how they are
+arranged), the key components and the states they show (empty, selected,
+hover, completed), the realistic content or data on display, and the
+screen's visual character. Describe what the user sees, not how it is
+implemented — roles, storage and permissions only matter where they change
+what appears.
+
+You are also given the project's chosen visual direction (mood, typography,
+corner style, color palette). The exact fonts, colors and rounding are
+applied to every screen separately, so don't restate hex codes or font
+names — but let the mood show in the brief's character: what kind of
+surfaces, decoration and tone suit it (a playful handwritten notes app
+wants paper-like cards and doodle accents; a professional analytics tool
+wants dense, quiet, structured panels). Every screen's brief should read as
+part of the same product.
 
 # CONSTRAINTS
 
@@ -1360,6 +1410,12 @@ click through — not every screen the full product could eventually have.
   re-enumerate it as new.
 - The sandbox is a Vite + React + TypeScript app: screens become .tsx
   components wired into src/App.tsx, never standalone HTML pages.
+- Never put photographs, illustrations, banners or any other images in a
+  brief — no cover images, hero pictures, photo avatars or image thumbnails.
+  Generated images are poor, and the code that builds from the design would
+  copy every one of them in as a long image URL. Build visual interest from
+  layout, color, type, icons, initials-in-a-circle avatars, gradients and
+  decoration drawn in CSS instead.
 `;
 
 // Call 2 — the task DAG, anchored to the enumerated screens. Own prompt now

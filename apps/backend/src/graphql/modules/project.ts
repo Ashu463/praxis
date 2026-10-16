@@ -5,7 +5,7 @@ import { requireUser } from "../context";
 import { loadOwnedProject, loadViewableProject } from "../authz";
 
 const ADMIN_EMAIL = "ashukasaudhan971@gmail.com";
-import { R2 } from "../../../../../packages/agents/agent/services/file-storage/fileStorage";
+import { R2 } from "../../../../../packages/agents/agent/services/fileStorage";
 import { E2BSandbox } from "../../../../../packages/agents/agent/utils/sandbox";
 import { logger } from "../../lib/utils";
 

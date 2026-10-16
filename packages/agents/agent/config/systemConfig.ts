@@ -53,9 +53,12 @@ export const AGENT_LLM_RETRY_ATTEMPTS = 5
 export const RATE_LIMIT_BACKOFF_MS = 20_000
 export const RETRY_MAX_BACKOFF_MS = 60_000
 
-// Design pre-phase (Stitch). Bounded concurrency so a pool of screens overlaps
-// the ~56s generation waits without stampeding a rate-limited free-tier key.
-export const STITCH_DESIGN_CONCURRENCY = 3
+// Design pre-phase (Stitch). Concurrent calls used to share one Stitch
+// transport (the SDK's module-level singleton), causing a cascading
+// "Already connected to a transport" failure. Fixed at the root — makeOneScreen
+// now gives every call its own client/transport — so this runs concurrently
+// again, no longer capped at the old 3.
+export const STITCH_DESIGN_CONCURRENCY = 5
 // Whole-screen generation retries before a screen is marked degraded (built
 // design-less rather than failing the run).
 export const STITCH_DESIGN_RETRY_ATTEMPTS = 3

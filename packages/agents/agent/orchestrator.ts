@@ -322,17 +322,19 @@ export class Orchestrator {
     async Execute(step: StepRunner): Promise<{ status: 'completed' | 'error', summary?: string, title?: string, todos?: PlannerTodo[], reason?: string }> {
         
         const planner = new Planner(this.userId, this.projectId, this.runId)
+        
+        const visualDirection = this.uiPreferences.map((p) => `- ${p.question}\n  ${p.answer}`).join('\n')
 
         // Call 1: enumerate screens (cheap) — unblocks the design phase.
         const screens = await step.run("enumerate-screens", () =>
-            planner.enumerateScreens(this.updatedPrompt, this.priorContext)) as unknown as PlannedScreen[]
+            planner.enumerateScreens(this.updatedPrompt, this.priorContext, visualDirection)) as unknown as PlannedScreen[]
 
         const [todos, designResults] = await Promise.all([
             step.run("plan-tasks", () =>
                 planner.planTasks(this.updatedPrompt, this.priorContext, screens)),
             step.run("generate-designs", async () => {
                 const sandbox = await this.reconnectSandbox()
-                return planner.generateDesigns(screens, sandbox)
+                return planner.generateDesigns(screens, sandbox, visualDirection)
             }),
         ]) as [PlannerTodo[], DesignResult[]]
         this.todos = todos

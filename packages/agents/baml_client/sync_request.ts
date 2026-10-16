@@ -369,7 +369,7 @@ export class HttpRequest {
   }
   
   EnumerateScreens(
-      systemPrompt: string,userPrompt: string,context: string,
+      systemPrompt: string,userPrompt: string,context: string,visualDirection: string,
       __baml_options__?: BamlCallOptions<never>
   ): HTTPRequest {
     try {
@@ -388,7 +388,7 @@ export class HttpRequest {
       return this.runtime.buildRequestSync(
         "EnumerateScreens",
         {
-          "systemPrompt": systemPrompt,"userPrompt": userPrompt,"context": context
+          "systemPrompt": systemPrompt,"userPrompt": userPrompt,"context": context,"visualDirection": visualDirection
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
@@ -1233,7 +1233,7 @@ export class HttpStreamRequest {
   }
   
   EnumerateScreens(
-      systemPrompt: string,userPrompt: string,context: string,
+      systemPrompt: string,userPrompt: string,context: string,visualDirection: string,
       __baml_options__?: BamlCallOptions<never>
   ): HTTPRequest {
     try {
@@ -1252,7 +1252,7 @@ export class HttpStreamRequest {
       return this.runtime.buildRequestSync(
         "EnumerateScreens",
         {
-          "systemPrompt": systemPrompt,"userPrompt": userPrompt,"context": context
+          "systemPrompt": systemPrompt,"userPrompt": userPrompt,"context": context,"visualDirection": visualDirection
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),

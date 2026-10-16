@@ -37,6 +37,11 @@ Follow this order. Most failures come from skipping step 1 or step 3.
    generation and injected there), so copying them produces the actual
    intended look, not a guess at one.
 
+   Never copy an `<img>` tag or its image URL out of the design — those are
+   long generated links that cost tokens to reproduce and aren't yours to
+   ship. Replace each one with an icon, an initials-in-a-circle avatar, or a
+   gradient block of the same size.
+
    The one case that's different: an item with no design reference at all
    (a degraded design, or a request with no design phase) has no dictionary
    to lean on. Style that with standard Tailwind utilities you know resolve
